@@ -2,6 +2,16 @@ import streamlit as st
 import datetime,requests
 from plotly import graph_objects as go
 from PIL import Image
+#from dotenv import load_dotenv 
+
+# Load the environment variables from the .env file
+#load_dotenv()
+
+# Get the value of your environment key
+#env_key_value = os.getenv('OWM_KEY')
+
+# Create a variable for your environment key
+#my_var = env_key_value
 
 st.set_page_config(
     page_title = 'Marc Leipold - Weather Forecast - Project 3', 
@@ -10,11 +20,24 @@ st.set_page_config(
 
 st.title("8-DAY WEATHER FORECAST 🌧️🌥️")
 
-city=st.text_input("ENTER THE NAME OF THE CITY ")
+city=st.text_input("ENTER THE NAME OF THE CITY ", key=None)
 
-unit=st.selectbox("SELECT TEMPERATURE UNIT ",["Celsius","Fahrenheit"])
+col1, col2 = st.columns([2,1])
+with col1:
+    weight, weight_unit = st.columns([3, 2])
+    with weight:
+        weight_val = st.number_input("Enter weight", min_value=0, max_value=300, key=None)
+    with weight_unit:
+        weight_unit_val = st.selectbox("Select weight unit", ["kg", "lbs"])
+with col2:
+    kite_size=st.selectbox("SELECT KITE SIZE ",["3m", "4m", "5m", "6m", "7m", "8m", "9m", "10m", "11m", "12m", "13m", "14m", "15m", "16m", "17m", "18m", "19m"])
 
-speed=st.selectbox("SELECT WIND SPEED UNIT ",["Metre/sec","Kilometre/hour"])
+
+col1, col2 = st.columns(2)
+with col1:
+    unit=st.selectbox("SELECT TEMPERATURE UNIT ",["Celsius","Fahrenheit"])
+with col2:
+    speed=st.selectbox("SELECT WIND SPEED UNIT ",["Knots", "Kilometers/hour", "Metre/sec", "Miles/hour"])
 
 graph=st.radio("SELECT GRAPH TYPE ",["Bar Graph","Line Graph"])
 
@@ -31,10 +54,12 @@ st.markdown(
         margin-top: 90px;
         border-radius: 16px;
         padding: 3rem !important;
-}
     }
-            
-}
+    
+    /**** hiding the "Press Enter to Apply" notification***/
+    .css-1li7dat.effi0qh1 {
+    visibility: hidden;
+    }
   
     </style>
     """,
@@ -46,12 +71,16 @@ if unit=="Celsius":
 else:
     temp_unit=" °F"
     
-if speed=="Kilometre/hour":
+if speed=="Kilometers/hour":
     wind_unit=" km/h"
+elif speed=="Knots":
+    wind_unit=" kt"
+elif speed=="Miles/hour":
+    wind_unit=" mi/h"
 else:
     wind_unit=" m/s"
 
-api="9b833c0ea6426b70902aa7a4b1da285c"
+api= "9b833c0ea6426b70902aa7a4b1da285c"
 url=f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api}"
 response=requests.get(url)
 x=response.json()
@@ -78,6 +107,11 @@ if(st.button("SUBMIT")):
         sunset=[]
         cel=273.15
         
+        # just messing around - delete before deploying - ML :) 
+        
+        # st.write(y)
+        
+        
         for item in y["daily"]:
             
             if unit=="Celsius":
@@ -89,6 +123,13 @@ if(st.button("SUBMIT")):
 
             if wind_unit=="m/s":
                 wspeed.append(str(round(item["wind_speed"],1))+wind_unit)
+                
+            elif wind_unit=="kt":
+                wspeed.append(str(round(item["wind_speed"]*1.94384,1))+wind_unit)
+            
+            elif wind_unit=="mi/h":
+                wspeed.append(str(round(item["wind_speed"]*2.23694,1))+wind_unit)
+                
             else:
                 wspeed.append(str(round(item["wind_speed"]*3.6,1))+wind_unit)
 
@@ -105,6 +146,8 @@ if(st.button("SUBMIT")):
             
             sunrise.append( datetime.datetime.utcfromtimestamp(item["sunrise"]).strftime('%H:%M'))
             sunset.append( datetime.datetime.utcfromtimestamp(item["sunset"]).strftime('%H:%M'))
+            
+            
 
         def bargraph():
             fig=go.Figure(data=
@@ -129,6 +172,11 @@ if(st.button("SUBMIT")):
             temp=str(round(x["main"]["temp"]-cel,2))
         else:
             temp=str(round((((x["main"]["temp"]-cel)*1.8)+32),2))
+        
+        
+        
+        
+        
         
         col1, col2 = st.columns(2)
         with col1:
