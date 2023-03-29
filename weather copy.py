@@ -6,13 +6,9 @@ from PIL import Image
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from matplotlib.colors import LinearSegmentedColormap
 import matplotlib as mpl
 from matplotlib import cm
 from colorspacious import cspace_converter
-from io import BytesIO
-import requests
-
 
 #load in the wind chart and create a dataframe
 
@@ -181,54 +177,23 @@ if(st.button("SUBMIT")):
                 else:
                     raise ValueError("Weight and/or wind speed not found in DataFrame.")   
                 
-
         
-        # Fig3 code
-        def bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size):
-             # Create a custom color map with a gradient
+        def add_flag_to_bar_chart(x, y, flag_img_path, flag_img_size):
             # Create the bar chart
-            fig3, ax = plt.subplots()
-            bars = ax.bar(dates, wspeed, edgecolor='white', linewidth=1)
-
+            fig, ax = plt.subplots()
+            ax.bar(x, y, color="red")
+            
+            #index = np.arange(len(columns)) + 0.3
+            
             # Set axis labels and title
-            ax.set_xlabel("Dates")
-            ax.set_ylabel("Wind (kts)")
+            ax.set_xlabel("X-axis Label")
+            ax.set_ylabel("Y-axis Label")
+            ax.set_title("Bar Chart with Kites")
+            
+            # Set y-axis ticks and limits
+            #ax.set_yticks(range(0, 21))  # Creates a range from 0 to 20
+            #ax.set_ylim(0, 20)  # Sets the y-axis limits to 0 and 20
 
-            # Assign colors based on the custom wind speed scale
-            for i, (rect, w) in enumerate(zip(bars, wspeed)):
-                if w <= 1:
-                    color = '#6286B7'
-                elif w <= 2:
-                    color = '#39619F'
-                elif w <= 6:
-                    color = '#4A94A9'
-                elif w <= 10:
-                    color = '#4D8D7B'
-                elif w <= 14:
-                    color = '#53A553'
-                elif w <= 17:
-                    color = '#359F35'
-                elif w <= 21:
-                    color = '#A79D51'
-                elif w <= 25:
-                    color = '#9F7F3A'
-                elif w <= 29:
-                    color = '#A16C5C'
-                elif w <= 33:
-                    color = '#813A4E'
-                elif w <= 37:
-                    color = '#AF5088'
-                elif w <= 41:
-                    color = '#754A93'
-                elif w <= 47:
-                    color = '#6D61A3'
-                elif w <= 52:
-                    color = '#44698D'
-                elif w <= 56:
-                    color = '#5C9098'
-                else:
-                    color = '#7D44A5'
-                rect.set_facecolor(color)
             # Load the flag image and create an offset image object
             flag_img = Image.open(flag_img_path)
             flag_img.thumbnail(flag_img_size)
@@ -238,31 +203,35 @@ if(st.button("SUBMIT")):
             # Loop through the bars and add the flag image to each one
             for i, rect in enumerate(ax.patches):
                 x_pos = rect.get_x() + rect.get_width() / 2.0
-                y_pos = rect.get_y() + rect.get_height() - 1.75
+                y_pos = rect.get_y() + rect.get_height() - 4.0
                 ab = AnnotationBbox(offset_img, (x_pos, y_pos), xycoords='data', frameon=False)
                 ax.add_artist(ab)
-
-            # Set the y-ticks
-            y_tick_interval = 2  # Choose the interval between y-ticks
-            y_tick_interval = int(y_tick_interval)
-            max_wspeed = max(wspeed)
-            ax.set_yticks(range(0, max_wspeed + y_tick_interval, y_tick_interval))
-
-            # Adjust layout
-            ax.margins(x=0.01, y=0.01)  # Adjust margins
-
-            # Set the spacing between bars
-            bar_width = 10
-            ax.set_xticks(np.arange(len(dates)))
-            ax.set_xticklabels(dates)
-
-            # Set the font color
-            for label in ax.get_xticklabels() + ax.get_yticklabels():
-                label.set_color("black")
             
+
             # Return the figure
-            return fig3
+            return fig
         
+        def bargraph_wind():
+            fig=go.Figure(data=
+                [
+                go.Bar(name="Wind Speed",x=dates,y=wspeed,marker_color='green', marker=dict(line=dict(width=1, color='white'))),
+                ])
+            fig.update_layout(xaxis_title="Dates",yaxis_title="Wind (kts)",barmode='group',margin=dict(l=70, r=10, t=80, b=80),font=dict(color="white"), bargap=0)
+            st.plotly_chart(fig)
+        
+        def area_chart_wind(dates, wspeed, wgust):
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=dates, y=wspeed, name="Wind Speed", fill='tozeroy', line_color='green'))
+            fig.add_trace(go.Scatter(x=dates, y=wgust, name="Wind Gust", fill='tozeroy', line_color='red'))
+            fig.update_layout(xaxis_title="Dates", yaxis_title="Wind (kts)", margin=dict(l=70, r=10, t=80, b=80), font=dict(color="white"))
+            st.plotly_chart(fig)
+                    
+        def linegraph():
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=dates, y=wspeed, name='Wind Speed '))
+            fig.add_trace(go.Scatter(x=dates, y=wgust, name='Wind Gust ',marker_color='crimson'))
+            fig.update_layout(xaxis_title="Dates",yaxis_title="Wind (kts)",font=dict(color="white"))
+            st.plotly_chart(fig)
             
         icon=x["weather"][0]["icon"]
         current_weather=x["weather"][0]["description"].title()
@@ -298,17 +267,55 @@ if(st.button("SUBMIT")):
         st.title('Kitesurfing Forecast 🌪️')
         st.write(f'This is the wind forecast for {city} for the next 8 days.')
 
-       
-        #FIG 3 CODE
+        # Add the flag to the bar chart
+        fig = add_flag_to_bar_chart(dates, wspeed, flag_img_path, flag_img_size)
+
+        
+        # Fig3 code
+
+        def bargraph_wind3(dates, wspeed):
+            # Create the bar chart
+            fig3, ax = plt.subplots()
+            ax.bar(dates, wspeed, color='green', edgecolor='white', linewidth=1)
+
+            # Set axis labels and title
+            ax.set_xlabel("Dates")
+            ax.set_ylabel("Wind (kts)")
+
+            # Set the y-ticks
+            y_tick_interval = 2  # Choose the interval between y-ticks
+            y_tick_interval = int(y_tick_interval)
+            max_wspeed = max(wspeed)
+            ax.set_yticks(range(0, max_wspeed + y_tick_interval, y_tick_interval))
+
+            # Adjust layout
+            ax.margins(x=0.01, y=0.01)  # Adjust margins
+
+            # Set the spacing between bars
+            bar_width = 10
+            ax.set_xticks(np.arange(len(dates)))
+            ax.set_xticklabels(dates)
+
+            # Set the font color
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_color("black")
+            
+            # Return the figure
+            return fig3
         
         # Convert wspeed list elements to integers
         wspeed = [int(w) for w in wspeed]
 
         # Call the function with data from the DataFrame
-        fig3 = bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size)
+        fig3 = bargraph_wind3(dates, wspeed)
         st.pyplot(fig3)
         
- 
+        # Show the plot in Streamlit
+        st.pyplot(fig)
+        
+
+        
+        
         st.write("Kite Size")
         kite_value_0 = get_cell_value(weight_val, int(wspeed[0]), wind_chart_df)
         st.write(kite_value_0)  
@@ -317,6 +324,13 @@ if(st.button("SUBMIT")):
         kite_value_1 = get_cell_value(weight_val, int(wspeed[1]), wind_chart_df)
         st.write(kite_value_1)
         
+        if graph=="Bar Graph":
+            #area_chart_wind(dates, wspeed, wgust)
+            bargraph_wind()
+            
+        elif graph=="Line Graph":
+            linegraph()
+
          
         table1=go.Figure(data=[go.Table(header=dict(
                   values = [
