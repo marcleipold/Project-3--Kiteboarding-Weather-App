@@ -12,6 +12,8 @@ from matplotlib import cm
 from colorspacious import cspace_converter
 from io import BytesIO
 import requests
+import base64
+
 
 
 #load in the wind chart and create a dataframe
@@ -50,7 +52,12 @@ with col1:
     with wu:
         weight_unit_val = st.selectbox("Select weight unit", ["kg", "lbs"])
 with col2:
-    kite_size=st.selectbox("SELECT KITE SIZE ",["3m", "4m", "5m", "6m", "7m", "8m", "9m", "10m", "11m", "12m", "13m", "14m", "15m", "16m", "17m", "18m", "19m"])
+    kite_sizes = ["3m", "4m", "5m", "6m", "7m", "8m", "9m", "10m", "11m", "12m", "13m", "14m", "15m", "16m", "17m", "18m", "19m"]
+    selected_kite_sizes = st.multiselect("SELECT KITE SIZES", kite_sizes)
+
+    # Remove the 'm' from each string in the list and convert to int
+    selected_kite_sizes_int = [int(size[:-1]) for size in selected_kite_sizes]
+
 
 
 col1, col2 = st.columns(2)
@@ -173,7 +180,7 @@ if(st.button("SUBMIT")):
             
         
         
-        
+        # Function to get the kite size from the kite_wind_chart
         def get_cell_value(weight_val, wspeed, dataframe):
             # Ensure weight and wind_speed are within the DataFrame's bounds
                 if weight_val in dataframe.index and int(wspeed) in dataframe.columns:
@@ -181,8 +188,11 @@ if(st.button("SUBMIT")):
                 else:
                     raise ValueError("Weight and/or wind speed not found in DataFrame.")   
                 
-
+        kite_values = [get_cell_value(weight_val, int(float(w)), wind_chart_df) for w in wspeed]
         
+        # Convert each element in the list to an int
+        kite_values_int = [int(value) for value in kite_values]
+
         # Fig3 code
         def bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size):
              # Create a custom color map with a gradient
@@ -193,7 +203,8 @@ if(st.button("SUBMIT")):
             # Set axis labels and title
             ax.set_xlabel("Dates")
             ax.set_ylabel("Wind (kts)")
-
+                
+            
             # Assign colors based on the custom wind speed scale
             for i, (rect, w) in enumerate(zip(bars, wspeed)):
                 if w <= 1:
@@ -227,27 +238,35 @@ if(st.button("SUBMIT")):
                 elif w <= 56:
                     color = '#5C9098'
                 else:
-                    color = '#7D44A5'
+                    color = '#7D44A5'  
                 rect.set_facecolor(color)
-            # Load the flag image and create an offset image object
-            flag_img = Image.open(flag_img_path)
-            flag_img.thumbnail(flag_img_size)
-            offset_img = OffsetImage(flag_img, zoom=1.0)
-            offset_img.image.axes = ax
+            
+            for rect, w in zip(ax.patches, kite_values):
+                # Load the flag image from a URL
+                url = f'https://extrevity.com/wp-content/uploads/2021/11/{w}Artboard-1@2x.png'
+                response = requests.get(url)
+                flag_img = Image.open(BytesIO(response.content))
 
-            # Loop through the bars and add the flag image to each one
-            for i, rect in enumerate(ax.patches):
+                # Create an offset image object
+                flag_img.thumbnail(flag_img_size)
+                offset_img = OffsetImage(flag_img, zoom=1.0)
+                offset_img.image.axes = ax
+
+                # Add the flag image to the bar
                 x_pos = rect.get_x() + rect.get_width() / 2.0
-                y_pos = rect.get_y() + rect.get_height() - 1.75
+                y_pos = rect.get_y() + rect.get_height() - 1.5
                 ab = AnnotationBbox(offset_img, (x_pos, y_pos), xycoords='data', frameon=False)
                 ax.add_artist(ab)
 
-            # Set the y-ticks
-            y_tick_interval = 2  # Choose the interval between y-ticks
-            y_tick_interval = int(y_tick_interval)
-            max_wspeed = max(wspeed)
-            ax.set_yticks(range(0, max_wspeed + y_tick_interval, y_tick_interval))
-
+            # # Set the y-ticks
+            # max_wspeed = max(wspeed)
+            # num_ticks_above_max = 4
+            # y_tick_interval = 2  # Choose the interval between y-ticks
+            # total_ticks = int(max_wspeed / y_tick_interval) + num_ticks_above_max + 1  # Add 1 to include the max value itself
+            # new_y_tick_interval = int(max_wspeed / (total_ticks - num_ticks_above_max - 1))
+            # ax.set_yticks(range(0, max_wspeed + new_y_tick_interval * (num_ticks_above_max + 1), new_y_tick_interval))
+            
+            
             # Adjust layout
             ax.margins(x=0.01, y=0.01)  # Adjust margins
 
@@ -295,27 +314,80 @@ if(st.button("SUBMIT")):
         flag_img_size = (50, 25)
 
         # Create the Streamlit app
-        st.title('Kitesurfing Forecast 🌪️')
-        st.write(f'This is the wind forecast for {city} for the next 8 days.')
+        st.title('This Week You Can:')
+        st.write(f'These are the activities you can do based on the weather for the next 8-days')
+        
+        # Ccreate dataframe for match results (Can you kite? Y/N)
+        
+        true_image = Image.open('images/icons8-checked-checkbox-64.png')
+        false_image = Image.open('images/icons8-close-window-64.png')
 
-       
-        #FIG 3 CODE
+        def image_to_base64(image):
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            return base64.b64encode(buffered.getvalue()).decode()
+
+        def resize_image(image, width, height):
+            return image.resize((width, height), Image.ANTIALIAS)
+
+        result = []
+
+        for value in kite_values_int:
+            if any(val in selected_kite_sizes_int for val in range(value, value + 4)):
+                result.append(image_to_base64(resize_image(true_image, 32, 32)))
+            else:
+                result.append(image_to_base64(resize_image(false_image, 32, 32)))
+
+        result_df = pd.DataFrame(result, columns=['Kitesurf'], index=dates)
+        result_df = result_df.T  # Transpose the DataFrame
+
+        # Create an HTML table
+        html_table = '<table><tr><th></th>'
+        for date in dates:
+            html_table += f'<th>{date}</th>'
+        html_table += '</tr>'
+
+        for index, row in result_df.iterrows():
+            html_table += '<tr>'
+            html_table += f'<td>{index}</td>'
+            for date, base64_image in row.items():
+                html_table += f'<td><img src="data:image/png;base64,{base64_image}" alt="icon" width="32" height="32"></td>'
+            html_table += '</tr>'
+
+        html_table += '</table>'
+
+        # Display the HTML table in Streamlit
+        st.markdown(html_table, unsafe_allow_html=True)
+          
+          
+          
+          
+          
+          
+            ###############  FIG 3 CODE  ########################
         
         # Convert wspeed list elements to integers
         wspeed = [int(w) for w in wspeed]
 
+         # Create the Streamlit app
+        st.title('Kitesurfing Forecast 🌪️')
+        st.write(f'This is the wind forecast for {city} for the next 8 days.')
+        
         # Call the function with data from the DataFrame
         fig3 = bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size)
         st.pyplot(fig3)
-        
  
-        st.write("Kite Size")
-        kite_value_0 = get_cell_value(weight_val, int(wspeed[0]), wind_chart_df)
-        st.write(kite_value_0)  
         
-        st.write("Kite Size")
-        kite_value_1 = get_cell_value(weight_val, int(wspeed[1]), wind_chart_df)
-        st.write(kite_value_1)
+        # st.write("Kite Size Needed ")
+        # st.write(kite_values_int)
+        
+        # st.write("Selected Kite Size")
+        # st.write(selected_kite_sizes_int)
+
+        
+        # st.write("Kite Size")
+        # kite_value_1 = get_cell_value(weight_val, int(wspeed[1]), wind_chart_df)
+        # st.write(kite_value_1)
         
          
         table1=go.Figure(data=[go.Table(header=dict(
