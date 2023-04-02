@@ -15,6 +15,10 @@ import requests
 import base64
 import io
 import pytz
+import folium
+from folium.plugins import MarkerCluster
+from streamlit_folium import folium_static
+import IPython.display
 
 
 
@@ -77,7 +81,7 @@ st.markdown(
     
     /**** hiding the "Press Enter to Apply" notification***/
     .css-1li7dat.effi0qh1 {
-    visibility: hidden;
+        visibility: hidden;
     }
     
     .css-1fcdlhc.e1s6o5jp0 {
@@ -87,6 +91,10 @@ st.markdown(
     
     .css-184tjsw.e16nr0p34 p {
         font-weight: bold;
+    }
+    
+    .element-container.css-an1we1.e1tzin5v3 iframe {
+        margin-left: -30px;
     }
     
     </style>
@@ -194,6 +202,70 @@ if(st.button("SUBMIT")):
 
             sunrise.append(sunrise_time.strftime('%H:%M'))
             sunset.append(sunset_time.strftime('%H:%M'))
+
+
+        capitalized_city = city.title()
+
+        # Replace with your API keys
+        OPENWEATHERMAP_API_KEY = api
+        GOOGLE_MAPS_API_KEY = "AIzaSyBFh6JylWFrod0XeNj-GKVHIy3Auki7H3M"
+        OPENWEATHERMAP_TILE_URL = f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={OPENWEATHERMAP_API_KEY}&op=WND&use_norm=false&arrow_step=32"
+
+        
+        # Calculate the bounding box of the displayed area
+        delta_lat = 1.5  # You can adjust this value to change the size of the bounding box
+        delta_lon = 1.5  # You can adjust this value to change the size of the bounding box
+
+        southwest_lat = lat - delta_lat / 2
+        southwest_lon = lon - delta_lon / 2
+        northeast_lat = lat + delta_lat / 2
+        northeast_lon = lon + delta_lon / 2
+        
+        def fetch_weather_data(city):
+            url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHERMAP_API_KEY}"
+            response = requests.get(url)
+            return response.json()
+
+        weather_data = fetch_weather_data(city)
+        lon = weather_data["coord"]["lon"]
+        lat = weather_data["coord"]["lat"]
+
+        # Set the center of the map to a specific location
+        center_lat = lat
+        center_lon = lon
+
+        # Create the map
+        map = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+
+        # Add a marker cluster to the map
+        marker_cluster = MarkerCluster().add_to(map)
+
+        # Add markers to the map based on the OpenWeatherMap data
+        locations = [
+            (lat, lon),
+        ]
+
+        for lat, lon in locations:
+            weather_info = f"{weather_data['name']} - {weather_data['weather'][0]['description']}"
+            folium.Marker(
+                location=[lat, lon],
+                popup=weather_info,
+                icon=folium.Icon(icon="cloud", prefix="fa"),
+            ).add_to(marker_cluster)
+            
+        # Add OpenWeatherMap Wind Layer as an ImageOverlay
+        overlay_url = f"https://tile.openweathermap.org/map/overlay/wind/{{z}}/{{x}}/{{y}}.png?appid={OPENWEATHERMAP_API_KEY}&op=WND&use_norm=false&arrow_step=32"
+
+        folium.raster_layers.ImageOverlay(
+            image=overlay_url,
+            bounds=[[southwest_lat, southwest_lon], [northeast_lat, northeast_lon]],
+            attr="&copy; <a href=https://openweathermap.org>OpenWeatherMap</a>",
+            name="Wind",
+            #opacity=0.7,  # Set the opacity of the layer
+        ).add_to(map)
+        
+        folium.LayerControl().add_to(map)
+
 
         
         # Remove the first character from wind_unit
@@ -501,7 +573,6 @@ if(st.button("SUBMIT")):
           
         st.markdown("<br>", unsafe_allow_html=True)  # Create a custom line break
         
-        capitalized_city = city.title()
 
         col1_cf = 75
         col2_cf = 25
@@ -527,7 +598,8 @@ if(st.button("SUBMIT")):
 
         st.subheader(" ")
                 
-        
+        # Display the map
+        folium_static(map)
         
 
         # Define the flag image path
