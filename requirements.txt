@@ -11,3 +11,4 @@ folium
 streamlit-folium
 python-dotenv
 pytz
+ipython
