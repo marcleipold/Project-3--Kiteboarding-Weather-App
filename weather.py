@@ -114,7 +114,7 @@ if weight_unit_val=="kg":
     weight_unit=" kg"
 else:
     weight_unit=" lbs"
-    weight_val = str(round(weight_val* 2.20462))
+    weight_val = str(round(weight_val / 2.20462))
 
 if unit=="Celsius":
     temp_unit=" °C"
