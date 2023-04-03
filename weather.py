@@ -114,7 +114,8 @@ if weight_unit_val=="kg":
     weight_unit=" kg"
 else:
     weight_unit=" lbs"
-    
+    weight_val = str(round(weight_val* 2.20462))
+
 if unit=="Celsius":
     temp_unit=" °C"
 else:
@@ -286,7 +287,7 @@ if(st.button("SUBMIT")):
             temp=str(round((((x["main"]["temp"]-cel)*1.8)+32),2))
         
         if wind_unit==" m/s":
-                wspeed2=(str(round(item["wind_speed"]))+wind_unit)
+            wspeed2=(str(round(item["wind_speed"]))+wind_unit)
                 
         elif wind_unit==" kt":
             wspeed2 = str(round(item["wind_speed"] * 1.94384, 2))
