@@ -19,9 +19,17 @@ import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import folium_static
 import IPython.display
+import os
+from dotenv import load_dotenv
 
 
+# Load the variables from the .env file
+load_dotenv()
 
+# Access Keys & Credentials
+
+owm_api = os.environ['OPENWEATHERMAP_API_KEY']
+google_api = os.environ['GOOGLE_MAPS_API_KEY']
 
 #load in the wind chart and create a dataframe
 
@@ -121,8 +129,7 @@ elif speed=="Miles/hour":
 else:
     wind_unit=" m/s"
 
-api= "9b833c0ea6426b70902aa7a4b1da285c"
-url=f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api}"
+url=f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={owm_api}"
 response=requests.get(url)
 x=response.json()
     
@@ -131,7 +138,7 @@ if(st.button("SUBMIT")):
         lon=x["coord"]["lon"]
         lat=x["coord"]["lat"]
         ex="current,minutely,hourly"
-        url2=f'https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude={ex}&appid={api}'
+        url2=f'https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude={ex}&appid={owm_api}'
         res=requests.get(url2)
         y=res.json()
         timezone_offset = y["timezone_offset"]  # Get the timezone offset in seconds
@@ -206,10 +213,7 @@ if(st.button("SUBMIT")):
 
         capitalized_city = city.title()
 
-        # Replace with your API keys
-        OPENWEATHERMAP_API_KEY = api
-        GOOGLE_MAPS_API_KEY = "AIzaSyBFh6JylWFrod0XeNj-GKVHIy3Auki7H3M"
-        OPENWEATHERMAP_TILE_URL = f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={OPENWEATHERMAP_API_KEY}&op=WND&use_norm=false&arrow_step=32"
+        # Replace with your API keys        #OPENWEATHERMAP_TILE_URL = f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={OPENWEATHERMAP_API_KEY}&op=WND&use_norm=false&arrow_step=32"
 
         
         # Calculate the bounding box of the displayed area
@@ -222,7 +226,7 @@ if(st.button("SUBMIT")):
         northeast_lon = lon + delta_lon / 2
         
         def fetch_weather_data(city):
-            url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHERMAP_API_KEY}"
+            url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={owm_api}"
             response = requests.get(url)
             return response.json()
 
@@ -236,7 +240,6 @@ if(st.button("SUBMIT")):
 
         # Create the map
         map = folium.Map(location=[center_lat, center_lon], zoom_start=10)
-
         # Add a marker cluster to the map
         marker_cluster = MarkerCluster().add_to(map)
 
@@ -254,7 +257,7 @@ if(st.button("SUBMIT")):
             ).add_to(marker_cluster)
             
         # Add OpenWeatherMap Wind Layer as an ImageOverlay
-        overlay_url = f"https://tile.openweathermap.org/map/overlay/wind/{{z}}/{{x}}/{{y}}.png?appid={OPENWEATHERMAP_API_KEY}&op=WND&use_norm=false&arrow_step=32"
+        overlay_url = f"https://tile.openweathermap.org/map/overlay/wind/{{z}}/{{x}}/{{y}}.png?appid={owm_api}&op=WND&use_norm=false&arrow_step=32"
 
         folium.raster_layers.ImageOverlay(
             image=overlay_url,
