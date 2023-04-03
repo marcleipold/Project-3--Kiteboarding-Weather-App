@@ -11,4 +11,4 @@ folium
 streamlit-folium
 python-dotenv
 pytz
-ipython
+ipython==8.12.0
