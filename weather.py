@@ -178,16 +178,19 @@ if(st.button("SUBMIT")):
 
             if wind_unit==" m/s":
                 wspeed.append(str(round(item["wind_speed"]*1)))
-                
+                wgust.append(str(round(item["wind_gust"]*1)))
+
             elif wind_unit==" kt":
                 wspeed.append(str(round(item["wind_speed"]*1.94384)))
                 wgust.append(str(round(item["wind_gust"]*1.94384)))
 
             elif wind_unit==" mi/h":
                 wspeed.append(str(round(item["wind_speed"]*2.23694)))
-                
+                wgust.append(str(round(item["wind_gust"]*2.23694)))
+
             else:
                 wspeed.append(str(round(item["wind_speed"]*3.6)))
+                wgust.append(str(round(item["wind_gust"]*3.6)))
 
             pres.append(item["pressure"])
             humd.append(str(item["humidity"])+' %')
