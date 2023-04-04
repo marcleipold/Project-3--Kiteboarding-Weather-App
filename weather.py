@@ -21,6 +21,9 @@ from streamlit_folium import folium_static
 import IPython.display
 import os
 from dotenv import load_dotenv
+import gzip
+import json
+import os
 
 
 # Load the variables from the .env file
@@ -37,18 +40,28 @@ wind_chart = pd.read_csv("wind_chart_df.csv", index_col=[0])
 wind_chart_df = pd.DataFrame(wind_chart)
 wind_chart_df.columns = wind_chart_df.columns.astype("int64")
 
+# Get the absolute path to city.list.json.gz based on the location of app.py
+current_dir = os.path.dirname(os.path.realpath(__file__))
+city_list_file = os.path.join(current_dir, "city.list.json.gz")
 
+with gzip.open(city_list_file, "rt", encoding="utf-8") as f:
+    city_data = json.load(f)
+    
 
+# Assuming the city dictionaries have a 'name' key for city names
+city_names = [city['name'] for city in city_data]
+
+#st.write(pd.DataFrame(city_names))
 
 st.set_page_config(
     page_title = 'Marc Leipold - Weather Forecast - Project 3', 
     page_icon=":tornado:", 
 )
 
-st.title("Kiteboarding Wind Forecast 🌧️🌥️")
+st.title("Kiteboarding Wind Forecast 🌪️")
 st.subheader("A weather forecasting app for Kiteboarders")
 
-city=st.text_input("ENTER THE NAME OF THE CITY ", key=None)
+city=st.selectbox("ENTER THE NAME OF THE CITY ", (city_names), index=19303)
 
 col1, col2 = st.columns([2,1])
 with col1:
@@ -131,6 +144,7 @@ else:
     wind_unit=" m/s"
 
 url=f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={owm_api}"
+
 response=requests.get(url)
 x=response.json()
     
@@ -455,15 +469,15 @@ if(st.button("SUBMIT")):
         # Function to get the kite size from the kite_wind_chart
         def get_cell_value(weight_val, wspeed, dataframe):
             # Ensure weight and wind_speed are within the DataFrame's bounds
-                if weight_val in dataframe.index and int(wspeed) in dataframe.columns:
-                    return dataframe.loc[weight_val, wspeed]
-                else:
-                    raise ValueError("Weight and/or wind speed not found in DataFrame.")   
-                
+            if weight_val in dataframe.index and int(wspeed) in dataframe.columns:
+                return dataframe.loc[weight_val, wspeed]
+            else:
+                return -1  # Return -1 when the weight and wind speed are not found in the DataFrame
+                        
         kite_values = [get_cell_value(weight_val, int(float(w)), wind_chart_df) for w in wspeed]
-        
-        # Convert each element in the list to an int
-        kite_values_int = [int(value) for value in kite_values]
+
+        # Convert each element in the list to an int if it's not -1
+        kite_values_int = [int(value) if value != -1 else -1 for value in kite_values]
 
         # Fig3 code
         def bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size):
