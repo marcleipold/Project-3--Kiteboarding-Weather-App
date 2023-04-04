@@ -716,6 +716,7 @@ if st.button("SUBMIT"):
 
 ## Next steps:
 For next steps in this project I would like to do the following things:
+* Use HOURLY weather data instead of DAILY. More Accurate...
 * Add Additional activities (Skydiving, Surfing) to the Activities Table
 * Improve the map to add wind layer overlay
 * Convert this Streamlit app to an iframe that I can publish on my site [Extrevity.com](https://extrevity.com/).

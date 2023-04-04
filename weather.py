@@ -94,12 +94,12 @@ st.markdown(
     """
     <style>
     section.main.css-k1vhr4.egzxvld5 {
-        background: url("https://github.com/marcleipold/Project-3-Weather-Predictor/blob/main/images/background-pic.jpg");
+        background: url("https://extrevity.com/wp-content/uploads/2021/11/background-pic.jpg");
         BACKGROUND-SIZE: COVER;
     }
     
     section.main.css-uf99v8.egzxvld5 {
-        background: url(https://github.com/marcleipold/Project-3-Weather-Predictor/blob/main/images/background-pic.jpg);
+        background: url(https://extrevity.com/wp-content/uploads/2021/11/background-pic.jpg);
         BACKGROUND-SIZE: COVER;
     }
     
