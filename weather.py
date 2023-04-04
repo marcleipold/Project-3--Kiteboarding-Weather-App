@@ -70,7 +70,7 @@ col1, col2 = st.columns(2)
 with col1:
     unit=st.selectbox("SELECT TEMPERATURE UNIT ",["Celsius","Fahrenheit"])
 with col2:
-    speed=st.selectbox("SELECT WIND SPEED UNIT ",["Knots", "Kilometers/hour", "Metre/sec", "Miles/hour"])
+    speed=st.selectbox("SELECT WIND SPEED UNIT ",["Knots", "Kilometers/hour", "Miles/hour"])
 
 st.markdown(
     """
@@ -114,7 +114,7 @@ if weight_unit_val=="kg":
     weight_unit=" kg"
 else:
     weight_unit=" lbs"
-    weight_val = str(round(weight_val / 2.20462))
+    #weight_val = str(round(weight_val / 2.20462))
 
 if unit=="Celsius":
     temp_unit=" °C"
