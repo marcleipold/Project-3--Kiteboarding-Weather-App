@@ -231,8 +231,6 @@ if(st.button("SUBMIT")):
 
         capitalized_city = city.title()
 
-        # Replace with your API keys        #OPENWEATHERMAP_TILE_URL = f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={OPENWEATHERMAP_API_KEY}&op=WND&use_norm=false&arrow_step=32"
-
         
         # Calculate the bounding box of the displayed area
         delta_lat = 1.5  # You can adjust this value to change the size of the bounding box
