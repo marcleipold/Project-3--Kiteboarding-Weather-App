@@ -93,7 +93,45 @@ with col2:
 st.markdown(
     """
     <style>
-    ... (CSS code) ...
+    section.main.css-k1vhr4.egzxvld5 {
+        background: url("https://github.com/marcleipold/Project-3-Weather-Predictor/blob/main/images/background-pic.jpg");
+        BACKGROUND-SIZE: COVER;
+    }
+    
+    section.main.css-uf99v8.egzxvld5 {
+        background: url(https://github.com/marcleipold/Project-3-Weather-Predictor/blob/main/images/background-pic.jpg);
+        BACKGROUND-SIZE: COVER;
+    }
+    
+    .block-container.css-1y4p8pa.egzxvld4 {
+        background: white;
+    }
+    
+    .block-container.css-91z34k.egzxvld4 {
+        background: white;
+        margin-top: 90px;
+        border-radius: 16px;
+        padding: 3rem !important;
+    }
+    
+    /**** hiding the "Press Enter to Apply" notification***/
+    .css-1li7dat.effi0qh1 {
+        visibility: hidden;
+    }
+    
+    .css-1fcdlhc.e1s6o5jp0 {
+        margin-top: 50px;
+        border: 2px solid #535353;
+    }
+    
+    .css-184tjsw.e16nr0p34 p {
+        font-weight: bold;
+    }
+    
+    .element-container.css-an1we1.e1tzin5v3 iframe {
+        margin-left: -30px;
+    }
+    
     </style>
     """,
     unsafe_allow_html=True
@@ -479,8 +517,8 @@ if st.button("SUBMIT"):
         # Convert each element in the list to an int if it's not -1
         kite_values_int = [int(value) if value != -1 else -1 for value in kite_values]
 
-        # Fig3 code
-        def bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size):
+        # Fig3 bar graph with wind speed kite img
+        def bargraph_wind3(dates, wspeed, kite_img_path, kite_img_size):
             # Create a bar chart
             fig3, ax = plt.subplots()
             bars = ax.bar(dates, wspeed, edgecolor='white', linewidth=1)
@@ -526,22 +564,22 @@ if st.button("SUBMIT"):
                     color = '#7D44A5'  
                 rect.set_facecolor(color)
             
-            # Add flag images to the bars based on kite_values
+            # Add kite size images to the bars based on kite_values
             for rect, w in zip(ax.patches, kite_values):
-                # Load the flag image from a URL
+                # Load the kite image from a URL
                 url = f'https://extrevity.com/wp-content/uploads/2021/11/{w}Artboard-1@2x.png'
                 response = requests.get(url)
 
                 # Check if the response content type is an image
                 if response.headers['Content-Type'].startswith('image/'):
-                    flag_img = Image.open(BytesIO(response.content))
+                    kite_img = Image.open(BytesIO(response.content))
 
                     # Create an offset image object
-                    flag_img.thumbnail(flag_img_size)
-                    offset_img = OffsetImage(flag_img, zoom=1.0)
+                    kite_img.thumbnail(kite_img_size)
+                    offset_img = OffsetImage(kite_img, zoom=1.0)
                     offset_img.image.axes = ax
 
-                    # Add the flag image to the bar
+                    # Add the kite size to the bar
                     x_pos = rect.get_x() + rect.get_width() / 2.0
                     y_pos = rect.get_y() + rect.get_height() - 1.5
                     ab = AnnotationBbox(offset_img, (x_pos, y_pos), xycoords='data', frameon=False)
@@ -628,11 +666,11 @@ if st.button("SUBMIT"):
         folium_static(map)
         
 
-        # Define the flag image path
-        flag_img_path = 'images/4Artboard 1@4x.png'
+        # Define the kite image path
+        kite_img_path = 'images/4Artboard 1@4x.png'
 
-        # Define the flag image size
-        flag_img_size = (50, 25)
+        # Define the kite image size
+        kite_img_size = (50, 25)
 
         # Create the Streamlit title
         st.title(f'This Week in {capitalized_city} You Can:')
@@ -718,13 +756,13 @@ if st.button("SUBMIT"):
         st.write(f'This is the wind forecast for {capitalized_city} for the next 8 days.')
 
         # Call the function with data from the DataFrame
-        fig3 = bargraph_wind3(dates, wspeed, flag_img_path, flag_img_size)
+        fig3 = bargraph_wind3(dates, wspeed, kite_img_path, kite_img_size)
         st.pyplot(fig3)
 
         # Create a custom line break
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        st.title('Detailed Forecast')
+        st.title('Detailed Kite Forecast')
         st.write(f'This is the detailed wind forecast for {capitalized_city} for the next 8 days.')
 
         # Display the wind_html_table
@@ -746,7 +784,9 @@ if st.button("SUBMIT"):
 
         Please exercise caution and use your best judgment when planning and engaging in any activities based on the information provided by the App. Stay safe and enjoy your chosen activities responsibly.
         """
-
+        # Create a custom line break
+        st.markdown("<br><br>", unsafe_allow_html=True)
+       
         with st.expander("Weather App Disclaimer"):
             st.markdown(disclaimer)
         
