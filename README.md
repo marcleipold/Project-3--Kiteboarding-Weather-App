@@ -1,5 +1,6 @@
 # Project 3: Kiteboarding Weather Predictor 🏄🌪️
 
+### Live App Link: [link](https://marcleipold-project-3-weather-predictor-weather-8oszs3.streamlit.app/)
 ### Presentation Deck: [link](https://docs.google.com/presentation/d/1CDhO2KZgJhaKbrxrh_fUmVAF2Ntfik1SgVeoMUuZgQs/edit?usp=sharing)
 
 Welcome to the Kiteboarding Weather Predictor repository! This project aims to provide a comprehensive and interactive weather forecasting application specifically designed for kiteboarders. With the help of various Python libraries and APIs, we have built a user-friendly tool that allows kiteboarders to determine the best times to ride based on their weight, the wind speed, and the kite sizes they own.
