@@ -1,803 +1,518 @@
 # Import Dependencies
 import numpy as np
 import streamlit as st
-import datetime,requests
-from plotly import graph_objects as go
+import datetime
+import requests
 from PIL import Image
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from matplotlib.colors import LinearSegmentedColormap
-import matplotlib as mpl
-from matplotlib import cm
-from colorspacious import cspace_converter
 from io import BytesIO
-import requests
 import base64
-import io
 import pytz
 import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import folium_static
-import IPython.display
 import os
 from dotenv import load_dotenv
 import gzip
 import json
-import os
 
+# Set page config first
+st.set_page_config(
+    page_title='Kiteboarding Wind Forecast App', 
+    page_icon=":tornado:", 
+    layout="wide"
+)
 
-# Load the variables from the .env file
+# Load environment variables
 load_dotenv()
 
 # Access Keys & Credentials
-owm_api = os.environ['OPENWEATHERMAP_API_KEY']
-google_api = os.environ['GOOGLE_MAPS_API_KEY']
+owm_api = os.environ.get('OPENWEATHERMAP_API_KEY')
 
-# load in the wind chart and create a dataframe
-wind_chart = pd.read_csv("wind_chart_df.csv", index_col=[0])
-wind_chart_df = pd.DataFrame(wind_chart)
-wind_chart_df.columns = wind_chart_df.columns.astype("int64")
+if not owm_api:
+    st.error("⚠️ OpenWeatherMap API key not found. Please add it to your .env file.")
+    st.stop()
 
-# Get the absolute path to city.list.json.gz based on the location of app.py
-current_dir = os.path.dirname(os.path.realpath(__file__))
-city_list_file = os.path.join(current_dir, "city.list.json.gz")
+# Initialize session state for data persistence
+if 'weather_data' not in st.session_state:
+    st.session_state.weather_data = None
+if 'forecast_data' not in st.session_state:
+    st.session_state.forecast_data = None
 
-with gzip.open(city_list_file, "rt", encoding="utf-8") as f:
-    city_data = json.load(f)
-    
+# Load wind chart data
+@st.cache_data
+def load_wind_chart():
+    try:
+        wind_chart = pd.read_csv("wind_chart_df.csv", index_col=[0])
+        wind_chart_df = pd.DataFrame(wind_chart)
+        wind_chart_df.columns = wind_chart_df.columns.astype("int64")
+        return wind_chart_df
+    except FileNotFoundError:
+        st.warning("⚠️ wind_chart_df.csv not found. Using sample data.")
+        # Create sample wind chart data
+        weights = range(40, 100, 5)
+        winds = range(10, 41)
+        data = {}
+        for wind in winds:
+            data[wind] = []
+            for weight in weights:
+                # Simple formula for kite size based on weight and wind
+                kite_size = max(3, min(19, int(20 - (wind * 0.3) + (weight - 70) * 0.1)))
+                data[wind].append(kite_size)
+        wind_chart_df = pd.DataFrame(data, index=weights)
+        return wind_chart_df
 
-# Assuming the city dictionaries have a 'name' key for city names
-city_names = [city['name'] for city in city_data]
+wind_chart_df = load_wind_chart()
 
-# Set the Streamlit page configuration (title and icon)
-st.set_page_config(
-    page_title='Marc Leipold - Weather Forecast - Project 3', 
-    page_icon=":tornado:", 
-)
+# Load city list
+@st.cache_data
+def load_city_list():
+    try:
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        city_list_file = os.path.join(current_dir, "city.list.json.gz")
+        
+        with gzip.open(city_list_file, "rt", encoding="utf-8") as f:
+            city_data = json.load(f)
+        
+        city_names = [city['name'] for city in city_data]
+        return city_names
+    except (FileNotFoundError, json.JSONDecodeError):
+        st.info("ℹ️ City list file not found. Using default cities.")
+        return ["London", "New York", "Paris", "Tokyo", "Sydney", "Miami", "San Francisco", 
+                "Barcelona", "Cape Town", "Rio de Janeiro", "Dubai", "Hawaii"]
 
-# Set the app title and subheader
-st.title("Kiteboarding Wind Forecast 🌪️")
-st.subheader("A weather forecasting app for Kiteboarders")
+city_names = load_city_list()
 
-# User input for city name
-city = st.selectbox("ENTER THE NAME OF THE CITY ", (city_names), index=19303)
-
-# Create two columns for user input
-col1, col2 = st.columns([2, 1])
-with col1:
-    # User input for weight and weight unit
-    w, wu = st.columns([3, 2])
-    with w:
-        weight_val = st.number_input("Enter weight", min_value=0, max_value=300, key=None)
-    with wu:
-        weight_unit_val = st.selectbox("Select weight unit", ["kg", "lbs"])
-with col2:
-    # User input for kite sizes
-    kite_sizes = ["3m", "4m", "5m", "6m", "7m", "8m", "9m", "10m", "11m", "12m", "13m", "14m", "15m", "16m", "17m", "18m", "19m"]
-    selected_kite_sizes = st.multiselect("SELECT KITE SIZES", kite_sizes)
-
-    # Convert the selected kite sizes to integers (removing the 'm' character)
-    selected_kite_sizes_int = [int(size[:-1]) for size in selected_kite_sizes]
-
-# Create two columns for user input
-col1, col2 = st.columns(2)
-with col1:
-    # User input for temperature unit
-    unit = st.selectbox("SELECT TEMPERATURE UNIT ", ["Celsius", "Fahrenheit"])
-with col2:
-    # User input for wind speed unit
-    speed = st.selectbox("SELECT WIND SPEED UNIT ", ["Knots", "Kilometers/hour", "Miles/hour"])
-
-# Add custom CSS to the page
+# Custom CSS
 st.markdown(
     """
     <style>
-    section.main.css-k1vhr4.egzxvld5 {
-        background: url("https://extrevity.com/wp-content/uploads/2021/11/background-pic.jpg");
-        BACKGROUND-SIZE: COVER;
+    .main {
+        padding: 2rem;
     }
-    
-    section.main.css-uf99v8.egzxvld5 {
-        background: url(https://extrevity.com/wp-content/uploads/2021/11/background-pic.jpg);
-        BACKGROUND-SIZE: COVER;
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        font-size: 16px;
+        padding: 10px 24px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: 0.3s;
     }
-    
-    .block-container.css-1y4p8pa.egzxvld4 {
-        background: white;
+    .stButton>button:hover {
+        background-color: #45a049;
+        transform: scale(1.05);
     }
-    
-    .block-container.css-91z34k.egzxvld4 {
-        background: white;
-        margin-top: 90px;
-        border-radius: 16px;
-        padding: 3rem !important;
+    .forecast-table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 20px 0;
     }
-    
-    /**** hiding the "Press Enter to Apply" notification***/
-    .css-1li7dat.effi0qh1 {
-        visibility: hidden;
+    .forecast-table th, .forecast-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
     }
-    
-    .css-1fcdlhc.e1s6o5jp0 {
-        margin-top: 50px;
-        border: 2px solid #535353;
-    }
-    
-    .css-184tjsw.e16nr0p34 p {
+    .forecast-table th {
+        background-color: #f2f2f2;
         font-weight: bold;
     }
-    
-    .element-container.css-an1we1.e1tzin5v3 iframe {
-        margin-left: -30px;
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        padding: 20px;
+        color: white;
+        margin: 10px 0;
     }
-    
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Set the unit labels for weight, temperature, and wind speed
-if weight_unit_val == "kg":
-    weight_unit = " kg"
-else:
-    weight_unit = " lbs"
+# Title and description
+st.title("🪁 Kiteboarding Wind Forecast")
+st.markdown("### Your personal weather assistant for perfect kiteboarding conditions")
 
-if unit == "Celsius":
-    temp_unit = " °C"
-else:
-    temp_unit = " °F"
-
-if speed == "Kilometers/hour":
-    wind_unit = " km/h"
-elif speed == "Knots":
-    wind_unit = " kt"
-elif speed == "Miles/hour":
-    wind_unit = " mi/h"
-else:
-    wind_unit = " m/s"
+# User inputs in an expander for cleaner UI
+with st.expander("⚙️ Configure Your Settings", expanded=True):
+    col1, col2, col3 = st.columns([2, 1, 1])
     
-# Check if the selected weight_unit_val is 'lbs'
-if weight_unit_val == "lbs":
-    # Convert the weight_val to kg (1 lb = 0.453592 kg)
-    weight_val = round(weight_val * 0.453592)
-
-# Request weather data for the selected city
-url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={owm_api}"
-response = requests.get(url)
-x = response.json()
+    with col1:
+        # City selection
+        default_city_index = min(0, len(city_names) - 1)
+        city = st.selectbox(
+            "📍 Select City",
+            city_names,
+            index=default_city_index,
+            help="Choose your kiteboarding location"
+        )
     
-# When the user clicks the submit button
-if st.button("SUBMIT"):
+    with col2:
+        # Weight input
+        weight_val = st.number_input(
+            "⚖️ Your Weight",
+            min_value=30,
+            max_value=150,
+            value=75,
+            step=5,
+            help="Enter your weight for kite size recommendations"
+        )
+        weight_unit_val = st.radio("Unit", ["kg", "lbs"], horizontal=True)
+    
+    with col3:
+        # Kite sizes
+        kite_sizes = [f"{i}m" for i in range(3, 20)]
+        selected_kite_sizes = st.multiselect(
+            "🪁 Your Kite Sizes",
+            kite_sizes,
+            default=["9m", "12m"],
+            help="Select the kite sizes you own"
+        )
+
+    col4, col5 = st.columns(2)
+    with col4:
+        unit = st.radio("🌡️ Temperature", ["Celsius", "Fahrenheit"], horizontal=True)
+    with col5:
+        speed = st.radio("💨 Wind Speed", ["Knots", "km/h", "mph"], horizontal=True, index=0)
+
+# Convert units
+weight_in_kg = weight_val if weight_unit_val == "kg" else round(weight_val * 0.453592)
+selected_kite_sizes_int = [int(size[:-1]) for size in selected_kite_sizes]
+
+# Helper functions
+def kelvin_to_temp(kelvin, unit="Celsius"):
+    """Convert Kelvin to Celsius or Fahrenheit"""
+    celsius = kelvin - 273.15
+    if unit == "Celsius":
+        return round(celsius)
+    else:
+        return round(celsius * 1.8 + 32)
+
+def convert_wind_speed(speed_ms, unit="Knots"):
+    """Convert wind speed from m/s to desired unit"""
+    if unit == "Knots":
+        return round(speed_ms * 1.94384)
+    elif unit == "km/h":
+        return round(speed_ms * 3.6)
+    else:  # mph
+        return round(speed_ms * 2.23694)
+
+def get_wind_unit_symbol(unit):
+    """Get the symbol for wind unit"""
+    if unit == "Knots":
+        return "kt"
+    elif unit == "km/h":
+        return "km/h"
+    else:
+        return "mph"
+
+def get_kite_size_recommendation(weight_kg, wind_speed_kt):
+    """Get recommended kite size based on weight and wind speed"""
     try:
-        # Extract longitude and latitude from the weather data
-        lon = x["coord"]["lon"]
-        lat = x["coord"]["lat"]
-
-        # Set the excluded data types for the One Call API request
-        ex = "current,minutely,hourly"
-        url2 = f'https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude={ex}&appid={owm_api}'
+        # Convert wind speed to knots if needed
+        wind_col = min(40, max(10, int(wind_speed_kt)))
         
-        # Request weather data for the specified location
-        res = requests.get(url2)
-        y = res.json()
+        # Find closest weight in index
+        available_weights = wind_chart_df.index.tolist()
+        closest_weight = min(available_weights, key=lambda x: abs(x - weight_kg))
+        
+        if wind_col in wind_chart_df.columns:
+            return int(wind_chart_df.loc[closest_weight, wind_col])
+    except:
+        pass
+    
+    # Fallback formula if chart lookup fails
+    return max(3, min(19, int(20 - (wind_speed_kt * 0.3) + (weight_kg - 70) * 0.1)))
 
-        # Get the timezone offset in seconds
-        timezone_offset = y["timezone_offset"]
+def create_wind_arrow(direction):
+    """Create a wind direction arrow"""
+    # Create a simple arrow using matplotlib
+    fig, ax = plt.subplots(figsize=(1, 1))
+    ax.arrow(0.5, 0.5, 0.3 * np.sin(np.radians(direction)), 
+             0.3 * np.cos(np.radians(direction)),
+             head_width=0.1, head_length=0.1, fc='blue', ec='blue')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis('off')
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
+    plt.close()
+    buf.seek(0)
+    
+    return base64.b64encode(buf.getvalue()).decode()
 
-        # Initialize lists to store the weather data
-        maxtemp = []
-        mintemp = []
-        maintemp = []
-        pres = []
-        humd = []
-        wspeed = []
-        wgust = []
-        wind_deg = []
-        desc = []
-        cloud = []
-        rain = []
-        dates = []
-        sunrise = []
-        sunset = []
-
-        # Conversion factor for Kelvin to Celsius
-        cel = 273.15
-
-        # Process the daily weather data
-        for item in y["daily"]:
-            # Convert temperatures to the selected unit and add to the corresponding lists
-            if unit == "Celsius":
-                maxtemp.append(round(item["temp"]["max"] - cel))
-                mintemp.append(round(item["temp"]["min"] - cel))
-                temp = str(round(x["main"]["temp"] - cel, 2))
-                maintemp.append(round((((x["main"]["temp"] - cel) * 1.8) + 32)))
-            else:
-                maxtemp.append(round((((item["temp"]["max"] - cel) * 1.8) + 32)))
-                mintemp.append(round((((item["temp"]["min"] - cel) * 1.8) + 32)))
-                temp = str(round((((x["main"]["temp"] - cel) * 1.8) + 32), 2))
-                maintemp.append(str(round((((x["main"]["temp"] - cel) * 1.8) + 32))))
-
-            # Convert wind speed and gust to the selected unit and add to the corresponding lists
-            if wind_unit == " m/s":
-                wspeed.append(str(round(item["wind_speed"] * 1)))
-                wgust.append(str(round(item["wind_gust"] * 1)))
-            elif wind_unit == " kt":
-                wspeed.append(str(round(item["wind_speed"] * 1.94384)))
-                wgust.append(str(round(item["wind_gust"] * 1.94384)))
-            elif wind_unit == " mi/h":
-                wspeed.append(str(round(item["wind_speed"] * 2.23694)))
-                wgust.append(str(round(item["wind_gust"] * 2.23694)))
-            else:
-                wspeed.append(str(round(item["wind_speed"] * 3.6)))
-                wgust.append(str(round(item["wind_gust"] * 3.6)))
-
-            # Add other weather data to the corresponding lists
-            pres.append(item["pressure"])
-            humd.append(str(item["humidity"]) + ' %')
-            wind_deg.append(round((item["wind_deg"])))
-            cloud.append(str(item["clouds"]) + ' %')
-            rain.append(str(int(item["pop"] * 100)) + '%')
-            desc.append(item["weather"][0]["description"].title())
-
-            # Convert the Unix timestamp to a date object and format the date
-            d1 = datetime.date.fromtimestamp(item["dt"])
-            dates.append(d1.strftime('%d %b'))
-
-            # Convert the timezone offset to minutes and create a timezone object
-            local_timezone = pytz.FixedOffset(timezone_offset // 60)
-
-            # Convert the sunrise and sunset times to the local timezone and format them
-            sunrise_time = datetime.datetime.utcfromtimestamp(item["sunrise"]).replace(tzinfo=pytz.utc).astimezone(local_timezone)
-            sunset_time = datetime.datetime.utcfromtimestamp(item["sunset"]).replace(tzinfo=pytz.utc).astimezone(local_timezone)
-            sunrise.append(sunrise_time.strftime('%H:%M'))
-            sunset.append(sunset_time.strftime('%H:%M'))
-
-        # Capitalize the city name
-        capitalized_city = city.title()
-
-        # Calculate the bounding box of the displayed area
-        delta_lat = 1.5  # You can adjust this value to change the size of the bounding box
-        delta_lon = 1.5  # You can adjust this value to change the size of the bounding box
-        southwest_lat = lat - delta_lat / 2
-        southwest_lon = lon - delta_lon / 2
-        northeast_lat = lat + delta_lat / 2
-        northeast_lon = lon + delta_lon / 2
-
-        # Function to fetch weather data for a given city
-        def fetch_weather_data(city):
+# Main forecast button
+if st.button("🔍 Get Forecast", type="primary", use_container_width=True):
+    with st.spinner("Fetching weather data..."):
+        try:
+            # Get current weather
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={owm_api}"
-            response = requests.get(url)
-            return response.json()
-
-        # Fetch the weather data for the specified city
-        weather_data = fetch_weather_data(city)
-        lon = weather_data["coord"]["lon"]
-        lat = weather_data["coord"]["lat"]
-
-        # Set the center of the map to the specified location
-        center_lat = lat
-        center_lon = lon
-
-        # Create the map with the specified center and zoom level
-        map = folium.Map(location=[center_lat, center_lon], zoom_start=10)
-
-        # Add a marker cluster to the map
-        marker_cluster = MarkerCluster().add_to(map)
-        
-        # Add markers to the map based on the OpenWeatherMap data
-        locations = [
-            (lat, lon),
-        ]
-
-        for lat, lon in locations:
-            weather_info = f"{weather_data['name']} - {weather_data['weather'][0]['description']}"
-            folium.Marker(
-                location=[lat, lon],
-                popup=weather_info,
-                icon=folium.Icon(icon="cloud", prefix="fa"),
-            ).add_to(marker_cluster)
-
-        # Add OpenWeatherMap Wind Layer as an ImageOverlay
-        overlay_url = f"https://tile.openweathermap.org/map/overlay/wind/{{z}}/{{x}}/{{y}}.png?appid={owm_api}&op=WND&use_norm=false&arrow_step=32"
-
-        folium.raster_layers.ImageOverlay(
-            image=overlay_url,
-            bounds=[[southwest_lat, southwest_lon], [northeast_lat, northeast_lon]],
-            attr="&copy; <a href=https://openweathermap.org>OpenWeatherMap</a>",
-            name="Wind",
-            #opacity=0.7,  # Set the opacity of the layer
-        ).add_to(map)
-
-        folium.LayerControl().add_to(map)
-
-        # Remove the first character from wind_unit
-        trimmed_wind_unit = wind_unit[1:]
-
-        # Process current weather data
-        icon = x["weather"][0]["icon"]
-        current_weather = x["weather"][0]["description"].title()
-
-        # Convert temperature to the selected unit
-        if unit == "Celsius":
-            temp = str(round(x["main"]["temp"] - cel, 2))
-        else:
-            temp = str(round((((x["main"]["temp"] - cel) * 1.8) + 32), 2))
-
-        # Convert wind speed to the selected unit
-        if wind_unit == " m/s":
-            wspeed2 = (str(round(item["wind_speed"])) + wind_unit)
-
-        elif wind_unit == " kt":
-            wspeed2 = str(round(item["wind_speed"] * 1.94384, 2))
-
-        elif wind_unit == " mi/h":
-            wspeed2 = (str(round(item["wind_speed"] * 2.23694)) + wind_unit)
-
-        else:
-            wspeed2 = (str(round(item["wind_speed"] * 3.6)) + wind_unit)      
+            response = requests.get(url, timeout=10)
             
-        # Function to rotate the arrow image based on the wind direction  
-        def arrow_rotate_image(image, wind_directions):
-            image_array = np.array(image)
-            height, width = image_array.shape[:2]
-            center_x = width // 2
-            center_y = height // 2
-
-            mean_wind_direction = np.mean(wind_directions)
-            angle_radians = np.radians(mean_wind_direction)
-            cos_theta = np.cos(angle_radians)
-            sin_theta = np.sin(angle_radians)
-            rotation_matrix = np.array([
-                [cos_theta, -sin_theta],
-                [sin_theta, cos_theta]
-            ])
-
-            rotated_image_array = np.zeros_like(image_array)
-            for y in range(height):
-                for x in range(width):
-                    relative_x = x - center_x
-                    relative_y = y - center_y
-                    new_x, new_y = np.matmul(rotation_matrix, [relative_x, relative_y])
-                    new_x += center_x
-                    new_y += center_y
-
-                    if 0 <= new_x < width and 0 <= new_y < height:
-                        rotated_image_array[y, x] = image_array[int(new_y), int(new_x)]
-
-            return Image.fromarray(rotated_image_array)
-        
-        # Function to convert an image to a base64 encoded string
-        def convert_image_to_base64(image):
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-            return img_str
-        
-        # Function to create the wind forecast HTML table
-        def wind_forecast_html_table(dates, images, wspeed, wgust, maxtemp, rain, cloud, humd, sunrise, sunset):
-            # Define the table's CSS styles
-            table_html = '''
-            <style>
-            .forecast-table {
-                border-collapse: collapse;
-                width: 100%;
-            }
-            .forecast-table th,
-            .forecast-table td {
-                border: 1px solid #ddd;
-                padding: 8px;
-                text-align: center;
-            }
-            .forecast-table th {
-                background-color: #f2f2f2;
-                color: black;
-                font-size: 12px;
-                max-width: 85px;
-            }
-            
-            table.forecast-table tr.temperature-row td {
-                background: #fd4200eb;
-                color: #fff;
-            }
-            
-            table.forecast-table tr.temperature-row td {
-                background: #fd4200eb;
-                color: #fff;
-            }
-            
-            table.forecast-table tr.sunrise-row td {
-                background: #fbc540;
-            }
-            
-            table.forecast-table tr.sunset-row td {
-                background: #16498ae3;
-                color: white;
-            }       
-            
-            </style>
-            '''
-            
-            # Start the table with an empty header cell
-            table_html += '<table class="forecast-table"><thead><tr><th></th>'
-            
-            # Add date headers
-            for date in dates:
-                table_html += f'<th>{date}</th>'
-            table_html += '</tr></thead><tbody>'
-
-            # Add wind speed row
-            table_html += f'<tr class="wind-speed-row"><th>Wind Speed ({trimmed_wind_unit})</th>'
-            for speed in wspeed:
-                table_html += f'<td>{speed}</td>'
-            table_html += '</tr>'
-
-            # Add wind gust row
-            table_html += f'<tr class="wind-gust-row"><th>Wind Gust ({trimmed_wind_unit})</th>'
-            for gust in wgust:
-                table_html += f'<td>{gust}</td>'
-            table_html += '</tr>'
-
-            # Add wind direction row
-            table_html += f'<tr class="wind-direction-row"><th>Wind Direction</th>'
-            for image in images:
-                table_html += f'<td><img src="data:image/png;base64,{image}" alt="Image" /></td>'
-            table_html += '</tr>'
-
-            # Add temperature row
-            table_html += f'<tr class="temperature-row"><th>Temp {temp_unit}</th>'
-            for temperature in maxtemp:
-                table_html += f'<td>{temperature}{temp_unit}</td>'
-            table_html += '</tr>'
-
-            # Add rain row
-            table_html += f'<tr class="rain-row"><th>Chance of Rain</th>'
-            for rainn in rain:
-                table_html += f'<td>{rainn}</td>'
-            table_html += '</tr>'
-
-            # Add clouds row
-            table_html += f'<tr class="cloud-row"><th>Cloud Coverage</th>'
-            for cloudd in cloud:
-                table_html += f'<td>{cloudd}</td>'
-            table_html += '</tr>'
-
-            # Add humidity row
-            table_html += f'<tr class="humidity-row"><th>Humidity</th>'
-            for humidity in humd:
-                table_html += f'<td>{humidity}</td>'
-            table_html += '</tr>'
-
-            # Add sunrise row
-            table_html += f'<tr class="sunrise-row"><th>Sunrise</th>'
-            for sun_r in sunrise:
-                table_html += f'<td>{sun_r}</td>'
-            table_html += '</tr>'
-
-            # Add sunset row
-            table_html += f'<tr class="sunset-row"><th>Sunset</th>'
-            for sun_s in sunset:
-                table_html += f'<td>{sun_s}</td>'
-            table_html += '</tr>'
-
-            table_html += '</tbody></table>'
-
-            return table_html
-        
-        # Set the path to the arrow image file and open the image
-        arrow_image_path = 'images/arrow.png'
-        arrow_image = Image.open(arrow_image_path)
-
-        # Resize the arrow image
-        resized_arrow_image = arrow_image.resize((24, 24), Image.ANTIALIAS)
-
-        # Initialize an empty list to store base64-encoded arrow images
-        arrow_images_base64 = []
-
-        # Loop through wind directions, rotate arrow images, and store them as base64 strings
-        for wind_direction in wind_deg:
-            rotated_arrow_image = arrow_rotate_image(resized_arrow_image, [wind_direction])
-            rotated_image_base64 = convert_image_to_base64(rotated_arrow_image)
-            arrow_images_base64.append(rotated_image_base64)
-
-        # Generate the HTML table with the wind forecast data
-        wind_html_table = wind_forecast_html_table(dates, arrow_images_base64, wspeed, wgust, maxtemp, rain, cloud, humd, sunrise, sunset)
-
-        # Function to get the kite size from the kite_wind_chart
-        def get_cell_value(weight_val, wspeed, dataframe):
-            # Ensure weight and wind_speed are within the DataFrame's bounds
-            if weight_val in dataframe.index and int(wspeed) in dataframe.columns:
-                return dataframe.loc[weight_val, wspeed]
-            else:
-                return -1  # Return -1 when the weight and wind speed are not found in the DataFrame
-
-        # Get kite size values based on the weight and wind speed
-        kite_values = [get_cell_value(weight_val, int(float(w)), wind_chart_df) for w in wspeed]
-
-        # Convert each element in the list to an int if it's not -1
-        kite_values_int = [int(value) if value != -1 else -1 for value in kite_values]
-
-        # Fig3 bar graph with wind speed kite img
-        def bargraph_wind3(dates, wspeed, kite_img_path, kite_img_size):
-            # Create a bar chart
-            fig3, ax = plt.subplots()
-            bars = ax.bar(dates, wspeed, edgecolor='white', linewidth=1)
-
-            # Set axis labels and title
-            ax.set_xlabel("Dates")
-            ax.set_ylabel(f"Wind Speed ({trimmed_wind_unit})")
-
-            # Assign colors based on the arrow wind speed scale
-            for i, (rect, w) in enumerate(zip(bars, wspeed)):
-                # Set the bar color based on wind speed
-                if w <= 1:
-                    color = '#6286B7'
-                elif w <= 2:
-                    color = '#39619F'
-                elif w <= 6:
-                    color = '#4A94A9'
-                elif w <= 10:
-                    color = '#4D8D7B'
-                elif w <= 14:
-                    color = '#53A553'
-                elif w <= 17:
-                    color = '#359F35'
-                elif w <= 21:
-                    color = '#A79D51'
-                elif w <= 25:
-                    color = '#9F7F3A'
-                elif w <= 29:
-                    color = '#A16C5C'
-                elif w <= 33:
-                    color = '#813A4E'
-                elif w <= 37:
-                    color = '#AF5088'
-                elif w <= 41:
-                    color = '#754A93'
-                elif w <= 47:
-                    color = '#6D61A3'
-                elif w <= 52:
-                    color = '#44698D'
-                elif w <= 56:
-                    color = '#5C9098'
-                else:
-                    color = '#7D44A5'  
-                rect.set_facecolor(color)
-            
-            # Add kite size images to the bars based on kite_values
-            for rect, w in zip(ax.patches, kite_values):
-                # Load the kite image from a URL
-                url = f'https://extrevity.com/wp-content/uploads/2021/11/{w}Artboard-1@2x.png'
-                response = requests.get(url)
-
-                # Check if the response content type is an image
-                if response.headers['Content-Type'].startswith('image/'):
-                    kite_img = Image.open(BytesIO(response.content))
-
-                    # Create an offset image object
-                    kite_img.thumbnail(kite_img_size)
-                    offset_img = OffsetImage(kite_img, zoom=1.0)
-                    offset_img.image.axes = ax
-
-                    # Add the kite size to the bar
-                    x_pos = rect.get_x() + rect.get_width() / 2.0
-                    y_pos = rect.get_y() + rect.get_height() - 1.5
-                    ab = AnnotationBbox(offset_img, (x_pos, y_pos), xycoords='data', frameon=False)
-                    ax.add_artist(ab)
-                else:
-                    print(f"Error: URL {url} did not return an image. Content-Type: {response.headers['Content-Type']}")
+            if response.status_code == 200:
+                current_data = response.json()
+                st.session_state.weather_data = current_data
                 
-            
-            # Adjust layout
-            ax.margins(x=0.01, y=0.01)  # Adjust margins
-
-            # Set the spacing between bars
-            bar_width = 10
-            ax.set_xticks(np.arange(len(dates)))
-            ax.set_xticklabels(dates)
-
-            # Set the font color
-            for label in ax.get_xticklabels() + ax.get_yticklabels():
-                label.set_color("black")
-
-            # Return the figure
-            return fig3
-
-        # Get icon and description of the current weather
-        icon = x["weather"][0]["icon"]
-        current_weather = x["weather"][0]["description"].title()
-
-        # Convert the temperature based on the user's preference
-        if unit == "Celsius":
-            temp = str(round(x["main"]["temp"] - cel))
-        else:
-            temp = str(round((((x["main"]["temp"] - cel) * 1.8) + 32)))
-        
-        
-        # Convert the wind unit based on the user's preference
-        if wind_unit==" m/s":
-                wspeed2=(str(round(item["wind_speed"]))+wind_unit)
+                # Get coordinates
+                lat = current_data["coord"]["lat"]
+                lon = current_data["coord"]["lon"]
                 
-        elif wind_unit==" kt":
-            wspeed2 = str(round(item["wind_speed"] * 1.94384))
-            #wgust.append(str(round(item["wind_gust"]*1.94384)))
-
-        elif wind_unit==" mi/h":
-            wspeed2=(str(round(item["wind_speed"]*2.23694))+wind_unit)
-            
-        else:
-            wspeed2=(str(round(item["wind_speed"]*3.6))+wind_unit)       
-        
-          
-        # Create a custom line break
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Set the column fractions
-        col1_cf = 75
-        col2_cf = 25
-
-        # Create two columns
-        col1, col2 = st.columns([col1_cf, col2_cf])
-
-        # Display the current forecast header and weather icon
-        with col1:
-            st.write(f"## Current Forecast for {capitalized_city}")
-        with col2:
-            st.image(f"http://openweathermap.org/img/wn/{icon}@2x.png", width=70)
-
-        # Set the width of the first two columns
-        col1_width = col2_width = 25
-
-        # Set the width of the third column
-        col3_width = 50
-
-        # Create three columns with specified widths
-        col1, col2, col3 = st.columns([col1_width, col2_width, col3_width])
-
-        # Display wind speed, temperature, and weather metrics
-        col1.metric("WIND SPEED", wspeed2 + wind_unit)
-        col2.metric("TEMPERATURE", temp + temp_unit)
-        col3.metric("WEATHER", current_weather)
-
-        # Add some space
-        st.subheader(" ")
-
-        # Display the map
-        folium_static(map)
-        
-
-        # Define the kite image path
-        kite_img_path = 'images/4Artboard 1@4x.png'
-
-        # Define the kite image size
-        kite_img_size = (50, 25)
-
-        # Create the Streamlit title
-        st.title(f'This Week in {capitalized_city} You Can:')
-        st.write(f'These are the activities you can do in {capitalized_city} based on the weather for the next 8-days')
-
-        # Load the true and false images
-        true_image = Image.open('images/icons8-checked-checkbox-64.png')
-        false_image = Image.open('images/icons8-close-window-64.png')
-
-        # Function to convert an image to base64 format
-        def image_to_base64(image):
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            return base64.b64encode(buffered.getvalue()).decode()
-
-        # Function to resize an image
-        def resize_image(image, width, height):
-            return image.resize((width, height), Image.ANTIALIAS)
-
-        # Create a list to store the result of whether kitesurfing is possible
-        result = []
-
-        # Check if kitesurfing is possible for each day and add the corresponding image to the result list
-        for value in kite_values_int:
-            if any(val in selected_kite_sizes_int for val in range(value, value + 4)):
-                result.append(image_to_base64(resize_image(true_image, 32, 32)))
+                # Get forecast data using One Call API 3.0
+                forecast_url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly,alerts&appid={owm_api}"
+                forecast_response = requests.get(forecast_url, timeout=10)
+                
+                # If One Call 3.0 doesn't work, try 2.5
+                if forecast_response.status_code != 200:
+                    forecast_url = f"https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly&appid={owm_api}"
+                    forecast_response = requests.get(forecast_url, timeout=10)
+                
+                if forecast_response.status_code == 200:
+                    st.session_state.forecast_data = forecast_response.json()
+                else:
+                    # Fallback to 5-day forecast
+                    forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={owm_api}"
+                    forecast_response = requests.get(forecast_url, timeout=10)
+                    if forecast_response.status_code == 200:
+                        # Process 5-day forecast into daily format
+                        raw_forecast = forecast_response.json()
+                        daily_data = []
+                        current_date = None
+                        day_data = []
+                        
+                        for item in raw_forecast['list']:
+                            date = datetime.datetime.fromtimestamp(item['dt']).date()
+                            if current_date != date:
+                                if day_data:
+                                    # Aggregate day data
+                                    daily_data.append({
+                                        'dt': day_data[0]['dt'],
+                                        'temp': {
+                                            'max': max([d['main']['temp_max'] for d in day_data]),
+                                            'min': min([d['main']['temp_min'] for d in day_data])
+                                        },
+                                        'wind_speed': np.mean([d['wind']['speed'] for d in day_data]),
+                                        'wind_gust': max([d['wind'].get('gust', d['wind']['speed']) for d in day_data]),
+                                        'wind_deg': day_data[0]['wind'].get('deg', 0),
+                                        'humidity': np.mean([d['main']['humidity'] for d in day_data]),
+                                        'clouds': np.mean([d['clouds']['all'] for d in day_data]),
+                                        'pop': max([d.get('pop', 0) for d in day_data]),
+                                        'weather': day_data[0]['weather']
+                                    })
+                                current_date = date
+                                day_data = [item]
+                            else:
+                                day_data.append(item)
+                        
+                        st.session_state.forecast_data = {
+                            'daily': daily_data[:8],
+                            'timezone_offset': 0
+                        }
+                    else:
+                        st.error(f"Unable to fetch forecast data. Status: {forecast_response.status_code}")
+                        st.stop()
             else:
-                result.append(image_to_base64(resize_image(false_image, 32, 32)))
+                st.error(f"City not found or API error. Status: {response.status_code}")
+                st.stop()
+                
+        except requests.exceptions.Timeout:
+            st.error("⏱️ Request timed out. Please try again.")
+            st.stop()
+        except requests.exceptions.RequestException as e:
+            st.error(f"❌ Network error: {str(e)}")
+            st.stop()
+        except Exception as e:
+            st.error(f"❌ An error occurred: {str(e)}")
+            st.stop()
 
-        # Create a DataFrame with the result list and dates as index
-        result_df = pd.DataFrame(result, columns=['Kitesurf'], index=dates)
-        result_df = result_df.T  # Transpose the DataFrame
-
-        # Create an HTML table for Activities (Y/N)
-        html_table = '''
-        <style>
-        .table-activities {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        .table-activities th,
-        .table-activities td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        .table-activities th {
-            background-color: #f2f2f2;
-            color: black;
-        }
-        </style>
-        '''
-        # Start building the HTML table
-        html_table += '<table class="table-activities"><tr><th></th>'
-        for date in dates:
-            html_table += f'<th>{date}</th>'
-        html_table += '</tr>'
-
-        # Add rows to the HTML table with the result DataFrame
-        for index, row in result_df.iterrows():
-            html_table += f'<tr class="row-{index}">'
-            html_table += f'<th>{index}</th>'
-            for date, base64_image in row.items():
-                html_table += f'<td><img src="data:image/png;base64,{base64_image}" alt="icon" width="32" height="32"></td>'
-            html_table += '</tr>'
-
-        # Close the HTML table
-        html_table += '</table>'
-
-        # Display the HTML table in Streamlit
-        st.markdown(html_table, unsafe_allow_html=True)
-
-        # Create a custom line break
-        st.markdown("<br><br>", unsafe_allow_html=True)
-
-        ###############  FIG 3 CODE  ########################
-
-        # Convert wspeed list elements to integers
-        wspeed = [int(w) for w in wspeed]
-
-        # Create the Streamlit app
-        st.title('Kitesurfing Forecast 🌪️')
-        st.write(f'This is the wind forecast for {capitalized_city} for the next 8 days.')
-
-        # Call the function with data from the DataFrame
-        fig3 = bargraph_wind3(dates, wspeed, kite_img_path, kite_img_size)
-        st.pyplot(fig3)
-
-        # Create a custom line break
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        st.title('Detailed Kite Forecast')
-        st.write(f'This is the detailed wind forecast for {capitalized_city} for the next 8 days.')
-
-        # Display the wind_html_table
-        st.markdown(wind_html_table, unsafe_allow_html=True)
-
-        # Add the legal disclaimer using Markdown
-        disclaimer = """
-        ## Weather App Disclaimer
-
-        By using this weather app (the "App"), you agree to the following terms and conditions:
-
-        The App provides weather forecasts and recommendations for various activities, including but not limited to skydiving. While we strive to provide accurate and reliable information, we cannot guarantee the correctness or timeliness of the weather data and recommendations provided. Weather conditions can change rapidly, and our data may not always reflect the most current local conditions.
-
-        You, the user, are solely responsible for verifying the accuracy of the weather information and recommendations provided by the App by cross-referencing with your local weather forecasts, and by consulting with experienced professionals in your specific activity. The App should be used as a supplementary tool only and should not replace your own judgment, expertise, or local knowledge.
-
-        By relying on the information provided by the App, you assume full responsibility for any risks, injuries, damages, or losses that may arise from your chosen activities. The developers, owners, and operators of the App disclaim any and all liability for any claims, damages, or losses resulting from your use of the App or your reliance on the information provided.
-
-        By using the App, you agree to indemnify, defend, and hold harmless the developers, owners, and operators of the App from any claims, liabilities, or expenses (including legal fees) arising from your use of the App or your violation of these terms and conditions.
-
-        Please exercise caution and use your best judgment when planning and engaging in any activities based on the information provided by the App. Stay safe and enjoy your chosen activities responsibly.
-        """
-        # Create a custom line break
-        st.markdown("<br><br>", unsafe_allow_html=True)
-       
-        with st.expander("Weather App Disclaimer"):
-            st.markdown(disclaimer)
+# Display results if data is available
+if st.session_state.weather_data and st.session_state.forecast_data:
+    current_data = st.session_state.weather_data
+    forecast_data = st.session_state.forecast_data
+    
+    # Current weather display
+    st.markdown("---")
+    st.subheader(f"📍 Current Weather in {city.title()}")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    current_temp = kelvin_to_temp(current_data["main"]["temp"], unit)
+    current_wind = convert_wind_speed(current_data["wind"]["speed"], speed)
+    temp_symbol = "°C" if unit == "Celsius" else "°F"
+    wind_symbol = get_wind_unit_symbol(speed)
+    
+    with col1:
+        st.metric("🌡️ Temperature", f"{current_temp}{temp_symbol}")
+    with col2:
+        st.metric("💨 Wind Speed", f"{current_wind} {wind_symbol}")
+    with col3:
+        st.metric("💧 Humidity", f"{current_data['main']['humidity']}%")
+    with col4:
+        st.metric("☁️ Clouds", f"{current_data['clouds']['all']}%")
+    
+    # Map
+    st.markdown("---")
+    st.subheader("🗺️ Location Map")
+    
+    m = folium.Map(location=[current_data["coord"]["lat"], current_data["coord"]["lon"]], 
+                   zoom_start=10, height=400)
+    folium.Marker(
+        [current_data["coord"]["lat"], current_data["coord"]["lon"]],
+        popup=f"{city} - {current_data['weather'][0]['description'].title()}",
+        tooltip=f"Wind: {current_wind} {wind_symbol}",
+        icon=folium.Icon(color="blue", icon="info-sign")
+    ).add_to(m)
+    
+    folium_static(m, width=700, height=400)
+    
+    # Process forecast data
+    st.markdown("---")
+    st.subheader("📅 8-Day Forecast")
+    
+    # Prepare forecast data
+    dates = []
+    wind_speeds = []
+    wind_gusts = []
+    wind_directions = []
+    temperatures = []
+    rain_chances = []
+    kite_recommendations = []
+    can_kite = []
+    
+    for day in forecast_data.get('daily', [])[:8]:
+        # Date
+        dt = datetime.datetime.fromtimestamp(day['dt'])
+        dates.append(dt.strftime('%b %d'))
         
-        #st.write(y)
-        st.header(' ')
-        st.header(' ')
-        st.markdown("Made with :heart: by : ")
-        st.markdown("Marc Leipold")
+        # Wind
+        wind_speed_kt = convert_wind_speed(day.get('wind_speed', 0), "Knots")
+        wind_speed_display = convert_wind_speed(day.get('wind_speed', 0), speed)
+        wind_speeds.append(wind_speed_display)
+        wind_gusts.append(convert_wind_speed(day.get('wind_gust', day.get('wind_speed', 0)), speed))
+        wind_directions.append(day.get('wind_deg', 0))
+        
+        # Temperature
+        if 'temp' in day and isinstance(day['temp'], dict):
+            temp_max = kelvin_to_temp(day['temp']['max'], unit)
+        else:
+            temp_max = kelvin_to_temp(day.get('temp', 273.15), unit)
+        temperatures.append(temp_max)
+        
+        # Rain
+        rain_chances.append(int(day.get('pop', 0) * 100))
+        
+        # Kite recommendation
+        kite_size = get_kite_size_recommendation(weight_in_kg, wind_speed_kt)
+        kite_recommendations.append(kite_size)
+        
+        # Can kite today?
+        can_kite_today = any(abs(kite_size - size) <= 2 for size in selected_kite_sizes_int)
+        can_kite.append(can_kite_today)
+    
+    # Create forecast dataframe
+    forecast_df = pd.DataFrame({
+        'Date': dates,
+        f'Wind ({wind_symbol})': wind_speeds,
+        f'Gust ({wind_symbol})': wind_gusts,
+        'Direction (°)': wind_directions,
+        f'Temp ({temp_symbol})': temperatures,
+        'Rain (%)': rain_chances,
+        'Kite Size': [f"{k}m" for k in kite_recommendations],
+        'Can Kite?': ['✅' if c else '❌' for c in can_kite]
+    })
+    
+    # Display forecast table
+    st.dataframe(
+        forecast_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Can Kite?": st.column_config.TextColumn(
+                "Can Kite?",
+                help="Based on your available kite sizes"
+            ),
+        }
+    )
+    
+    # Wind speed chart
+    st.markdown("---")
+    st.subheader("📊 Wind Speed Forecast")
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+    bars = ax.bar(dates, wind_speeds, color='skyblue', edgecolor='navy', linewidth=2)
+    
+    # Color bars based on wind speed
+    for bar, wind, kite in zip(bars, wind_speeds, kite_recommendations):
+        if wind < 10:
+            bar.set_facecolor('#90EE90')  # Light green
+        elif wind < 20:
+            bar.set_facecolor('#FFD700')  # Gold
+        elif wind < 30:
+            bar.set_facecolor('#FFA500')  # Orange
+        else:
+            bar.set_facecolor('#FF6347')  # Tomato
+        
+        # Add kite size on top of bar
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
+                f'{kite}m', ha='center', va='bottom', fontweight='bold')
+    
+    ax.set_xlabel('Date', fontsize=12)
+    ax.set_ylabel(f'Wind Speed ({wind_symbol})', fontsize=12)
+    ax.set_title('Wind Speed and Recommended Kite Sizes', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    
+    # Add legend
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#90EE90', label='Light Wind (<10)'),
+        Patch(facecolor='#FFD700', label='Moderate (10-20)'),
+        Patch(facecolor='#FFA500', label='Strong (20-30)'),
+        Patch(facecolor='#FF6347', label='Very Strong (>30)')
+    ]
+    ax.legend(handles=legend_elements, loc='upper right')
+    
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    
+    # Summary
+    st.markdown("---")
+    st.subheader("📝 Summary")
+    
+    good_days = sum(can_kite)
+    if good_days > 0:
+        st.success(f"🎉 You can kitesurf on {good_days} out of {len(dates)} days with your current kite sizes!")
+        
+        best_day_idx = wind_speeds.index(max(wind_speeds))
+        st.info(f"💨 Best wind day: {dates[best_day_idx]} with {wind_speeds[best_day_idx]} {wind_symbol}")
+    else:
+        st.warning("⚠️ No ideal kitesurfing days with your current kite sizes. Consider getting different sizes!")
+        
+        recommended_sizes = set(kite_recommendations)
+        st.info(f"💡 Recommended kite sizes for this week: {', '.join([f'{k}m' for k in sorted(recommended_sizes)])}")
 
-    except KeyError:
-        st.error(" Invalid city!!  Please try again !!")
+# Disclaimer
+with st.expander("⚖️ Disclaimer"):
+    st.markdown("""
+    **Weather App Disclaimer**
+    
+    This app provides weather forecasts for kiteboarding enthusiasts. While we strive to provide accurate information,
+    weather conditions can change rapidly. Always:
+    
+    - Check local conditions before heading out
+    - Use proper safety equipment
+    - Never kite alone in dangerous conditions
+    - Respect local regulations and beach rules
+    - Consider your skill level when choosing conditions
+    
+    The developers assume no responsibility for decisions made based on this app's information.
+    Stay safe and have fun! 🪁
+    """)
 
-
-       
+# Footer
+st.markdown("---")
+st.markdown("Made with ❤️ for the kiteboarding community")
