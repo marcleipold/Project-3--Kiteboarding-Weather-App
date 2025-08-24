@@ -437,9 +437,9 @@ if st.session_state.weather_data and st.session_state.forecast_data:
         }
     )
     
-    # Wind speed chart
+    # Wind speed chart with kite images
     st.markdown("---")
-    st.subheader("📊 Wind Speed Forecast")
+    st.subheader("📊 Wind Speed Forecast with Kite Recommendations")
     
     fig, ax = plt.subplots(figsize=(12, 6))
     bars = ax.bar(dates, wind_speeds, color='skyblue', edgecolor='navy', linewidth=2)
@@ -447,15 +447,51 @@ if st.session_state.weather_data and st.session_state.forecast_data:
     # Color bars based on wind speed
     for bar, wind, kite in zip(bars, wind_speeds, kite_recommendations):
         if wind < 10:
-            bar.set_facecolor('#90EE90')  # Light green
+            bar.set_facecolor('#6286B7')  # Light blue
+        elif wind < 15:
+            bar.set_facecolor('#4A94A9')  # Teal
         elif wind < 20:
-            bar.set_facecolor('#FFD700')  # Gold
+            bar.set_facecolor('#53A553')  # Green
+        elif wind < 25:
+            bar.set_facecolor('#A79D51')  # Yellow-brown
         elif wind < 30:
-            bar.set_facecolor('#FFA500')  # Orange
+            bar.set_facecolor('#A16C5C')  # Brown
+        elif wind < 35:
+            bar.set_facecolor('#813A4E')  # Dark red
         else:
-            bar.set_facecolor('#FF6347')  # Tomato
+            bar.set_facecolor('#AF5088')  # Purple
         
-        # Add kite size on top of bar
+        # Try to add kite images from URL or local files
+        try:
+            # First try to load from URL (your original code)
+            url = f'https://extrevity.com/wp-content/uploads/2021/11/{kite}Artboard-1@2x.png'
+            response = requests.get(url, timeout=2)
+            
+            if response.status_code == 200 and response.headers.get('Content-Type', '').startswith('image/'):
+                kite_img = Image.open(BytesIO(response.content))
+            else:
+                # Try local file as fallback
+                local_kite_path = f'images/{kite}Artboard-1@2x.png'
+                if os.path.exists(local_kite_path):
+                    kite_img = Image.open(local_kite_path)
+                else:
+                    # Skip image if not found
+                    kite_img = None
+            
+            if kite_img:
+                # Add kite image to the bar
+                kite_img.thumbnail((50, 25))
+                offset_img = OffsetImage(kite_img, zoom=1.0)
+                offset_img.image.axes = ax
+                
+                x_pos = bar.get_x() + bar.get_width() / 2.0
+                y_pos = bar.get_y() + bar.get_height() - 1.5
+                ab = AnnotationBbox(offset_img, (x_pos, y_pos), xycoords='data', frameon=False)
+                ax.add_artist(ab)
+        except:
+            pass  # Skip if image loading fails
+        
+        # Always add text label as fallback/addition
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
                 f'{kite}m', ha='center', va='bottom', fontweight='bold')
