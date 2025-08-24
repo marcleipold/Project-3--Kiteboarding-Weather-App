@@ -133,7 +133,7 @@ st.markdown(
 )
 
 # Title and description
-st.title("🪁 Kiteboarding Wind Forecast")
+st.title("🏄‍♂️ Kiteboarding Wind Forecast")
 st.markdown("### Your personal weather assistant for perfect kiteboarding conditions")
 
 # User inputs in an expander for cleaner UI
