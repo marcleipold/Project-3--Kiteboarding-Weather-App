@@ -1,6 +1,12 @@
+import streamlit as st
+
+st.set_page_config(
+    page_title="🏄‍♂️ Kiteboarding Weather Predictor - EXTREVITY.COM",
+    layout="centered"  # or "wide"
+)
+
 # Import Dependencies
 import numpy as np
-import streamlit as st
 import datetime
 import requests
 from PIL import Image
@@ -18,12 +24,6 @@ from dotenv import load_dotenv
 import gzip
 import json
 
-# Set page config first
-st.set_page_config(
-    page_title="Weather Predictor",
-    layout="centered",  # forces narrow layout
-    initial_sidebar_state="auto"
-)
 
 # Load environment variables
 load_dotenv()
@@ -86,54 +86,65 @@ def load_city_list():
 city_names = load_city_list()
 
 # Custom CSS
-st.markdown(
-    """
-    <style>
-    .main {
-        padding: 2rem;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        font-size: 16px;
-        padding: 10px 24px;
-        border-radius: 8px;
-        border: none;
-        cursor: pointer;
-        transition: 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #45a049;
-        transform: scale(1.05);
-    }
-    .forecast-table {
-        border-collapse: collapse;
-        width: 100%;
-        margin: 20px 0;
-    }
-    .forecast-table th, .forecast-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-    }
-    .forecast-table th {
-        background-color: #f2f2f2;
-        font-weight: bold;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
-        padding: 20px;
-        color: white;
-        margin: 10px 0;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+<style>
+html, body, .main {
+    background-color: #ED1C24 !important;
+    color: black !important;
+    font-family: 'Ubuntu', sans-serif !important;
+}
+
+section[data-testid="stSidebar"],
+div[data-testid="stVerticalBlock"] {
+    background-color: white !important;
+}
+
+label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
+    color: black !important;
+}
+
+/* Existing styles you already have */
+.stButton>button {
+    background-color: #4CAF50;
+    color: white;
+    font-size: 16px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.stButton>button:hover {
+    background-color: #ed1c24;
+    transform: scale(1.05);
+}
+.forecast-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+}
+.forecast-table th, .forecast-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+.forecast-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+.metric-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    margin: 10px 0;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Title and description
-st.title("🏄‍♂️ Kiteboarding Wind Forecast")
+st.title("🏄‍♂️ Kiteboarding Weather Predictor - EXTREVITY.COM")
 st.markdown("### Your personal weather assistant for perfect kiteboarding conditions")
 
 # User inputs in an expander for cleaner UI
