@@ -142,7 +142,7 @@ with st.expander("⚙️ Configure Your Settings", expanded=True):
     
     with col1:
         # City selection
-        default_city_index = min(0, len(city_names) - 1)
+        default_city_index = city_names.index("Chicago") if "Chicago" in city_names else 0
         city = st.selectbox(
             "📍 Select City",
             city_names,
