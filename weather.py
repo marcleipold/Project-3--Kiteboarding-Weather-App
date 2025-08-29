@@ -88,6 +88,14 @@ city_names = load_city_list()
 # Custom CSS
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+    <div style="text-align: center; color: black; font-family: 'Ubuntu', sans-serif;">
+        <h1 style="margin-bottom: 0.25em;">🏄‍♂️ Kiteboarding Weather Predictor
+            <a href="https://extrevity.com" target="_blank style="text-decoration: none; color: black !important; font-family: 'Ubuntu', sans-serif;">
+                EXTREVITY.COM
+            </a>
+        </h1>    
+        <p style="font-size: 1.25em; text-align: center;">Your personal weather assistant for perfect kiteboarding conditions</p>
+    </div>
     <style>
         html, body, .main {
             background-color: #ED1C24 !important;
@@ -138,10 +146,6 @@ st.markdown("""
         .
     </style>
 """, unsafe_allow_html=True)
-
-# Title and description
-st.title("🏄‍♂️ Kiteboarding Weather Predictor - [EXTREVITY.COM](https://extrevity.com)")
-st.markdown("### Your personal weather assistant for perfect kiteboarding conditions")
 
 # User inputs in an expander for cleaner UI
 with st.expander("⚙️ Configure Your Settings", expanded=True):
