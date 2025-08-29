@@ -20,9 +20,9 @@ import json
 
 # Set page config first
 st.set_page_config(
-    page_title='Kiteboarding Wind Forecast App', 
-    page_icon=":tornado:", 
-    layout="wide"
+    page_title="Weather Predictor",
+    layout="centered",  # forces narrow layout
+    initial_sidebar_state="auto"
 )
 
 # Load environment variables
