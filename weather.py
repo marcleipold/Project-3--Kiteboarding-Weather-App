@@ -85,72 +85,83 @@ def load_city_list():
 
 city_names = load_city_list()
 
-# Custom CSS
+# Custom CSS and Title Block
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
-    <div style="text-align: center; color: black; font-family: 'Ubuntu', sans-serif;">
-        <h1 style="margin-bottom: 0.25em;">🏄‍♂️ Kiteboarding Weather Predictor
-            <a href="https://extrevity.com/listing-category/kitesurfing/" target="_blank style="color: #ED1C24;">
-                EXTREVITY.COM
-            </a>
-        </h1>    
-        <p style="font-size: 1.25em; text-align: center;">Your personal weather assistant for perfect kiteboarding conditions</p>
-    </div>
-    <style>
-        .st-emotion-cache-gf1xsr a {
-            color: #ED1C24 !important;
-            text-decoration: underline !important;
-        }
-        html, body, .main {
-            background-color: #ED1C24 !important;
-            color: black !important;
-            font-family: 'Ubuntu', sans-serif !important;
-        }
 
-        label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
-            color: black !important;
-        }
-            
+<style>
+/* Global style overrides */
+html, body, .main {
+    background-color: #ED1C24 !important;
+    color: black !important;
+    font-family: 'Ubuntu', sans-serif !important;
+}
 
-        .stButton>button {
-            background-color: #ed1c24;
-            color: white;
-            font-size: 16px;
-            padding: 10px 24px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .stButton>button:hover {
-            background-color: #ed1c24;
-            transform: scale(1.05);
-        }
-        .forecast-table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 20px 0;
-        }
-        .forecast-table th, .forecast-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        .forecast-table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-        .metric-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-            padding: 20px;
-            color: white;
-            margin: 10px 0;
-        }
-        
-        .
-    </style>
+/* EXTREVITY link override */
+.st-emotion-cache-gf1xsr a {
+    color: #ED1C24 !important;
+    text-decoration: underline !important;
+}
+
+/* Form & widget text */
+label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
+    color: black !important;
+}
+
+/* Button styling */
+.stButton>button {
+    background-color: #ed1c24;
+    color: white;
+    font-size: 16px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.stButton>button:hover {
+    background-color: #d21c21;
+    transform: scale(1.05);
+}
+
+/* Forecast table */
+.forecast-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+}
+.forecast-table th, .forecast-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+.forecast-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+/* Metric card */
+.metric-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    margin: 10px 0;
+}
+</style>
+
+<!-- Centered Title + External Link -->
+<div style="text-align: center; font-family: 'Ubuntu', sans-serif; color: black;">
+    <h1 style="margin-bottom: 0.25em;">
+        🏄‍♂️ Kiteboarding Weather Predictor
+        <a href="https://extrevity.com/listing-category/kitesurfing/" target="_blank" style="color: #ED1C24; text-decoration: underline;">
+            EXTREVITY.COM
+        </a>
+    </h1>
+    <p style="font-size: 1.25em;">Your personal weather assistant for perfect kiteboarding conditions</p>
+</div>
 """, unsafe_allow_html=True)
+
 
 # User inputs in an expander for cleaner UI
 with st.expander("⚙️ Configure Your Settings", expanded=True):
@@ -572,4 +583,4 @@ st.markdown("Made with ❤️ for the kiteboarding community")
 # Below your st.title()
 if st.button("🔁 Refresh App", help="Clear cache and reload app"):
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.rerun()
