@@ -100,7 +100,7 @@ st.markdown("""
         }
 
         .stButton>button {
-            background-color: #4CAF50;
+            background-color: #ed1c24;
             color: white;
             font-size: 16px;
             padding: 10px 24px;
@@ -134,11 +134,13 @@ st.markdown("""
             color: white;
             margin: 10px 0;
         }
+        
+        .
     </style>
 """, unsafe_allow_html=True)
 
 # Title and description
-st.title("🏄‍♂️ Kiteboarding Weather Predictor - EXTREVITY.COM")
+st.title("🏄‍♂️ Kiteboarding Weather Predictor - [EXTREVITY.COM](https://extrevity.com)")
 st.markdown("### Your personal weather assistant for perfect kiteboarding conditions")
 
 # User inputs in an expander for cleaner UI
@@ -179,7 +181,7 @@ with st.expander("⚙️ Configure Your Settings", expanded=True):
 
     col4, col5 = st.columns(2)
     with col4:
-        unit = st.radio("🌡️ Temperature", ["Celsius", "Fahrenheit"], horizontal=True)
+        unit = st.radio("🌡️ Temperature", ["Fahrenheit", "Celsius"], horizontal=True)
     with col5:
         speed = st.radio("💨 Wind Speed", ["Knots", "km/h", "mph"], horizontal=True, index=0)
 
@@ -251,7 +253,7 @@ def create_wind_arrow(direction):
     return base64.b64encode(buf.getvalue()).decode()
 
 # Main forecast button
-if st.button("🔍 Get Forecast", type="primary", use_container_width=True):
+if st.button("Get Forecast", type="primary", use_container_width=True):
     with st.spinner("Fetching weather data..."):
         try:
             # Get current weather
