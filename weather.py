@@ -563,3 +563,8 @@ with st.expander("⚖️ Disclaimer"):
 # Footer
 st.markdown("---")
 st.markdown("Made with ❤️ for the kiteboarding community")
+
+# Below your st.title()
+if st.button("🔁 Refresh App", help="Clear cache and reload app"):
+    st.cache_data.clear()
+    st.experimental_rerun()
