@@ -95,11 +95,6 @@ html, body, .main {
     font-family: 'Ubuntu', sans-serif !important;
 }
 
-section[data-testid="stSidebar"],
-div[data-testid="stVerticalBlock"] {
-    background-color: white !important;
-}
-
 label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
     color: black !important;
 }
