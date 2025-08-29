@@ -99,7 +99,6 @@ label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
     color: black !important;
 }
 
-/* Existing styles you already have */
 .stButton>button {
     background-color: #4CAF50;
     color: white;
