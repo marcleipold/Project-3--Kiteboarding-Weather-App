@@ -90,13 +90,17 @@ st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
     <div style="text-align: center; color: black; font-family: 'Ubuntu', sans-serif;">
         <h1 style="margin-bottom: 0.25em;">🏄‍♂️ Kiteboarding Weather Predictor
-            <a href="https://extrevity.com" target="_blank style="text-decoration: none; color: black !important; font-family: 'Ubuntu', sans-serif;">
+            <a href="https://extrevity.com/listing-category/kitesurfing/" target="_blank style="color: #ED1C24;">
                 EXTREVITY.COM
             </a>
         </h1>    
         <p style="font-size: 1.25em; text-align: center;">Your personal weather assistant for perfect kiteboarding conditions</p>
     </div>
     <style>
+        .st-emotion-cache-gf1xsr a {
+            color: #ED1C24 !important;
+            text-decoration: underline !important;
+        }
         html, body, .main {
             background-color: #ED1C24 !important;
             color: black !important;
@@ -106,6 +110,7 @@ st.markdown("""
         label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
             color: black !important;
         }
+            
 
         .stButton>button {
             background-color: #ed1c24;
