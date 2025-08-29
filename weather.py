@@ -88,53 +88,53 @@ city_names = load_city_list()
 # Custom CSS
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
-<style>
-html, body, .main {
-    background-color: #ED1C24 !important;
-    color: black !important;
-    font-family: 'Ubuntu', sans-serif !important;
-}
+    <style>
+        html, body, .main {
+            background-color: #ED1C24 !important;
+            color: black !important;
+            font-family: 'Ubuntu', sans-serif !important;
+        }
 
-label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
-    color: black !important;
-}
+        label, .stRadio, .stSelectbox, .stTextInput, .stMultiselect, .stNumberInput {
+            color: black !important;
+        }
 
-.stButton>button {
-    background-color: #4CAF50;
-    color: white;
-    font-size: 16px;
-    padding: 10px 24px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: 0.3s;
-}
-.stButton>button:hover {
-    background-color: #ed1c24;
-    transform: scale(1.05);
-}
-.forecast-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 20px 0;
-}
-.forecast-table th, .forecast-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
-}
-.forecast-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
-}
-.metric-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 10px;
-    padding: 20px;
-    color: white;
-    margin: 10px 0;
-}
-</style>
+        .stButton>button {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .stButton>button:hover {
+            background-color: #ed1c24;
+            transform: scale(1.05);
+        }
+        .forecast-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        .forecast-table th, .forecast-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .forecast-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            margin: 10px 0;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
 # Title and description
